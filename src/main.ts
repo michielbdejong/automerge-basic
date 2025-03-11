@@ -1,38 +1,54 @@
 /* eslint-disable  @typescript-eslint/no-explicit-any */
-import { Repo } from "@automerge/automerge-repo";
+import { Repo, DocHandle } from "@automerge/automerge-repo";
 import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket";
 import { NodeFSStorageAdapter } from "@automerge/automerge-repo-storage-nodefs";
 
-const repo1 = new Repo({
-  network: [new BrowserWebSocketClientAdapter('wss://sync.automerge.org')],
-  storage: new NodeFSStorageAdapter('./data'),
-});
+class Tub {
+  repo: Repo;
+  doc: DocHandle<unknown>;
+  name: string;
+  constructor(name: string) {
+    this.repo = new Repo({
+      network: [new BrowserWebSocketClientAdapter('wss://sync.automerge.org')],
+      storage: new NodeFSStorageAdapter('./data'),
+    });
+    this.name = name;
+  }
+  createDoc(): string {
+    this.doc = this.repo.create();
+    this.doc.on('change', ({ doc }) => {
+      console.log(`new text in repo ${this.name} is`, (doc as any).text);
+    });
+    console.log(`doc created in repo ${this.name}`, this.doc.documentId);
+    return this.doc.documentId;
+  }
+  async setDoc(docUrl: string): Promise<void> {
+    console.log(`finding doc in repo ${this.name}`, docUrl);
+    this.doc = this.repo.find(docUrl as any);
+    this.doc.on('change', ({ doc }) => {
+      console.log(`new text in repo ${this.name} is`, (doc as any).text);
+    });
+    do {
+      console.log(`waiting for doc ${this.name} to be ready`);
+      await new Promise(x => setTimeout(x, 1000));
+    } while (!this.doc.isReady());
+  }
 
-const repo2 = new Repo({
-  network: [new BrowserWebSocketClientAdapter('wss://sync.automerge.org')],
-  storage: new NodeFSStorageAdapter('./data'),
-});
+  setText(): void {
+    (this.doc as any).text = 'hello';
+  }
+  addText(): void {
+    (this.doc as any).text += ' world';
+  }
+}
+
 async function run(): Promise<void> {
-  const doc1 = repo1.create();
-  doc1.on('change', ({ doc }) => {
-    console.log("new text in repo 1 is", (doc as any).text);
-  });
-  const doc2 = repo2.find(doc1.documentId);
-  doc2.on('change', ({ doc }) => {
-    console.log("new text in repo 2 is", (doc as any).text);
-  });
-  console.log('setting doc text in repo 1');
-  doc1.change((d: { text: string }) => {
-    d.text = 'hello'
-  });
-  do {
-    console.log('waiting for doc2 to be ready');
-    await new Promise(x => setTimeout(x, 1000));
-  } while (!doc2.isReady());
-  console.log('changing doc in repo 2');
-  doc2.change((d: { text: string }) => {
-    d.text += ' world'
-  });
+  const tub1 = new Tub('1');
+  const tub2 = new Tub('2');
+  const docUrl = tub1.createDoc();
+  await tub2.setDoc(docUrl);
+  tub1.setText();
+  tub2.addText();
 }
 
 // ...
