@@ -36,11 +36,15 @@ class Tub {
 
   setText(): void {
     console.log(`Setting doc text in repo ${this.name}`);
-    (this.doc as any).text = 'hello';
+    this.doc.change((d: { text: string }) => {
+      d.text = 'hello'
+    });
   }
   addText(): void {
     console.log(`Cha doc text in repo ${this.name}`);
-    (this.doc as any).text += ' world';
+    this.doc.change((d: { text: string }) => {
+      d.text += ' world'
+    });
   }
 }
 
@@ -62,17 +66,13 @@ async function run(): Promise<void> {
     console.log("new text in repo 2 is", (doc as any).text);
   });
   console.log('setting doc text in repo 1');
-  tub1.doc.change((d: { text: string }) => {
-    d.text = 'hello'
-  });
+  tub1.setText();
   do {
     console.log('waiting for doc2 to be ready');
     await new Promise(x => setTimeout(x, 1000));
   } while (!doc2.isReady());
   console.log('changing doc in repo 2');
-  doc2.change((d: { text: string }) => {
-    d.text += ' world'
-  });
+  tub2.addText();
 }
 
 // ...
