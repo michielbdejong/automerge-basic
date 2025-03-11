@@ -41,7 +41,7 @@ class Tub {
     });
   }
   addText(): void {
-    console.log(`Cha doc text in repo ${this.name}`);
+    console.log(`Changing doc text in repo ${this.name}`);
     this.doc.change((d: { text: string }) => {
       d.text += ' world'
     });
@@ -49,29 +49,12 @@ class Tub {
 }
 
 
-const tub1 = new Tub('1');
-
-const tub2 = new Tub('2');
-
 async function run(): Promise<void> {
-  // const tub1 = new Tub('1');
-  // const tub2 = new Tub('2');
-  // const docUrl = tub1.createDoc();
-  // tub1.setText();
-  // await tub2.setDoc(docUrl);
-  // tub2.addText();
-  const docId = tub1.createDoc();
-  const doc2 = tub2.repo.find(docId as any);
-  doc2.on('change', ({ doc }) => {
-    console.log("new text in repo 2 is", (doc as any).text);
-  });
-  console.log('setting doc text in repo 1');
+  const tub1 = new Tub('1');
+  const tub2 = new Tub('2');
+  const docUrl = tub1.createDoc();
   tub1.setText();
-  do {
-    console.log('waiting for doc2 to be ready');
-    await new Promise(x => setTimeout(x, 1000));
-  } while (!doc2.isReady());
-  console.log('changing doc in repo 2');
+  await tub2.setDoc(docUrl);
   tub2.addText();
 }
 
