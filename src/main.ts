@@ -35,9 +35,11 @@ class Tub {
   }
 
   setText(): void {
+    console.log(`Setting doc text in repo ${this.name}`);
     (this.doc as any).text = 'hello';
   }
   addText(): void {
+    console.log(`Cha doc text in repo ${this.name}`);
     (this.doc as any).text += ' world';
   }
 }
@@ -46,8 +48,8 @@ async function run(): Promise<void> {
   const tub1 = new Tub('1');
   const tub2 = new Tub('2');
   const docUrl = tub1.createDoc();
-  await tub2.setDoc(docUrl);
   tub1.setText();
+  await tub2.setDoc(docUrl);
   tub2.addText();
 }
 
