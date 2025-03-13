@@ -1,44 +1,52 @@
 import { createServer, IncomingMessage, ServerResponse } from 'http';
-import { Tub } from './tub.js';
+// import { Tub } from './tub.js';
 
-createServer((req: IncomingMessage, res: ServerResponse) => {
-  if (req.url === '/transaction/relay') {
+function startServer(port: number): void {
+  createServer((req: IncomingMessage, res: ServerResponse) => {
     let body = '';
     req.on('data', (chunk) => {
       body += chunk.toString();
     });
     req.on('end', async () => {
       try {
-
-        const data = JSON.parse(body);
         const headers = JSON.parse(JSON.stringify(req.headers));
-        console.log(req.url, data, headers);
-        const postRes = await fetch('http://trunk.cc-server/transaction/relay', {
+      // console.log('parsing JSON', body);
+      // const data = JSON.parse(body);
+      // console.log(req.url, data, headers);
+      // if (req.url === '/transaction/relay') {
+      //   const doc = tub.repo.create();
+      //   doc.on('change', ({ doc }) => {
+      //     console.log(`new transaction data is`, doc);
+      //   });
+      //   doc.change((d: { headers: any, data: any }) => {
+      //     d.headers = headers;
+      //     d.data = data
+      //   });
+      // }
+        const postRes = await fetch('http://branch.cc-server/transaction/relay', {
           method: 'POST',
-          headers: {
-            'cc-node': 'branch',
-            'last-hash': 'trunk',
-            'cc-node-trace': 'twig>branch>',
-            'content-type': 'application/json'
-          },
+          headers,
           body
         });
-        console.log(postRes.status, await postRes.text());
+        const respBody = await postRes.text();
+        console.log(postRes.status, respBody);
+        res.writeHead(postRes.status, postRes.statusText);
+        res.end(respBody);
       } catch (e) {
         console.error(e);
       }
     });
-  }
-  res.end('ok');
-}).listen(8080);
-
+  }).listen(port);
+}
+  
 async function run(): Promise<void> {
-  const tub1 = new Tub('1');
-  const tub2 = new Tub('2');
-  const docUrl = tub1.createDoc();
-  tub1.setText();
-  await tub2.setDoc(docUrl);
-  tub2.addText();
+  // const tub1 = new Tub('1');
+  // const tub2 = new Tub('2');
+  // const docUrl = tub1.createDoc();
+  // tub1.setText();
+  // await tub2.setDoc(docUrl);
+  // tub2.addText();
+  startServer(8080);
 }
 
 // ...
