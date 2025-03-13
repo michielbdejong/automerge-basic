@@ -1,7 +1,65 @@
-import { createServer, IncomingMessage, ServerResponse } from 'http';
+import { createServer, IncomingMessage, ServerResponse, IncomingHttpHeaders } from 'http';
 // import { Tub } from './tub.js';
 
-function startProxy(port: number, upstreamUrl: string): void {
+function  analyseTraffic(data: {
+  upstreamUrl: string,
+  port: number,
+  path: string,
+  method: string,
+  reqBody: string,
+  reqHeaders: IncomingHttpHeaders,
+  resStatus: number,
+  resStatusText: string,
+  resHeaders: Headers,
+  resBody: string
+}): void {
+  const {
+    upstreamUrl,
+    port,
+    path,
+    method,
+    reqBody,
+    reqHeaders,
+    resStatus,
+    resStatusText,
+    resHeaders,
+    resBody
+  } = data;
+  console.log('REQ', `${upstreamUrl}:${port}${path}`, method, JSON.stringify(reqBody), reqHeaders);
+  console.log('RES', resStatus, resStatusText, resBody, resHeaders);
+  console.log('-------------------');
+}
+
+async function toBackend(data: {
+  upstreamUrl: string,
+  path: string,
+  method: string,
+  reqBody: string,
+  reqHeaders: IncomingHttpHeaders
+}): Promise<{
+  resStatus: number,
+  resStatusText: string,
+  resHeaders: Headers,
+  resBody: string
+}> {
+  const params = {
+    method: data.method,
+    headers: JSON.parse(JSON.stringify(data.reqHeaders))
+  };
+  if (data.reqBody.length > 0) {
+    (params as unknown as { body: string }).body = data.reqBody;
+  }
+  const upstreamRes = await fetch(`${data.upstreamUrl}${data.path}`, params);
+  const resBody = await upstreamRes.text();
+  return {
+    resStatus: upstreamRes.status,
+    resStatusText: upstreamRes.statusText,
+    resHeaders: upstreamRes.headers,
+    resBody
+  }
+}
+
+function startProxy(port: number, upstreamUrl: string, handler: typeof toBackend): void {
   createServer((req: IncomingMessage, res: ServerResponse) => {
     let body = '';
     req.on('data', (chunk) => {
@@ -9,33 +67,34 @@ function startProxy(port: number, upstreamUrl: string): void {
     });
     req.on('end', async () => {
       try {
-        const headers = JSON.parse(JSON.stringify(req.headers));
-        console.log('REQ', `${upstreamUrl}:${port}${req.url}`, req.method, JSON.stringify(body), headers);
-      // console.log('parsing JSON', body);
-      // const data = JSON.parse(body);
-      // if (req.url === '/transaction/relay') {
-      //   const doc = tub.repo.create();
-      //   doc.on('change', ({ doc }) => {
-      //     console.log(`new transaction data is`, doc);
-      //   });
-      //   doc.change((d: { headers: any, data: any }) => {
-      //     d.headers = headers;
-      //     d.data = data
-      //   });
-      // }
-        const params = {
+        const {
+          resStatus,
+          resStatusText,
+          resHeaders,
+          resBody
+        } = await handler({
+          upstreamUrl,
+          path: req.url,
           method: req.method,
-          headers
-        };
-        if (body.length > 0) {
-          (params as unknown as { body: string }).body = body;
-        }
-        const upstreamRes = await fetch(`${upstreamUrl}${req.url}`, params);
-        const respBody = await upstreamRes.text();
-        res.setHeaders(upstreamRes.headers);
-        console.log('RES', upstreamRes.status, respBody, upstreamRes.headers);
-        res.writeHead(upstreamRes.status, upstreamRes.statusText);
-        res.end(respBody);
+          reqBody: body,
+          reqHeaders: req.headers
+        });
+        
+        res.setHeaders(resHeaders);
+        analyseTraffic({
+          upstreamUrl,
+          port,
+          path: req.url,
+          method: req.method,
+          reqBody: body,
+          reqHeaders: req.headers,
+          resStatus,
+          resStatusText,
+          resHeaders,
+          resBody
+        });
+        res.writeHead(resStatus, resStatusText);
+        res.end(resBody);
       } catch (e) {
         console.error(e);
       }
@@ -51,8 +110,10 @@ async function run(): Promise<void> {
   // tub1.setText();
   // await tub2.setDoc(docUrl);
   // tub2.addText();
-  startProxy(8080, 'http://branch.cc-server');
-  startProxy(8090, 'http://twig.cc-server');
+  startProxy(8060, 'http://twig.cc-server', toBackend);
+  startProxy(8070, 'http://branch.cc-server', toBackend);
+  startProxy(8080, 'http://trunk.cc-server', toBackend);
+  startProxy(8090, 'http://branch2.cc-server', toBackend);
 }
 
 // ...
