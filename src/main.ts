@@ -1,5 +1,5 @@
 import { createServer, IncomingMessage, ServerResponse, IncomingHttpHeaders } from 'http';
-// import { Tub } from './tub.js';
+import { Ledger } from './ledger.js';
 
 function  analyseTraffic(data: {
   upstreamUrl: string,
@@ -104,14 +104,9 @@ function startProxy(port: number, upstreamUrl: string, handler: typeof toBackend
 }
   
 async function run(): Promise<void> {
-  // const tub1 = new Tub('1');
-  // const tub2 = new Tub('2');
-  // const docUrl = tub1.createDoc();
-  // tub1.setText();
-  // await tub2.setDoc(docUrl);
-  // tub2.addText();
+  const ledger = new Ledger();
   startProxy(8060, 'http://twig.cc-server', toBackend);
-  startProxy(8070, 'http://branch.cc-server', toBackend);
+  startProxy(8070, 'http://branch.cc-server', ledger.handle.bind(ledger));
   startProxy(8080, 'http://trunk.cc-server', toBackend);
   startProxy(8090, 'http://branch2.cc-server', toBackend);
 }
