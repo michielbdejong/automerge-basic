@@ -1,7 +1,7 @@
 import { createServer, IncomingMessage, ServerResponse } from 'http';
 // import { Tub } from './tub.js';
 
-function startServer(port: number): void {
+function startProxy(port: number, upstreamUrl: string): void {
   createServer((req: IncomingMessage, res: ServerResponse) => {
     let body = '';
     req.on('data', (chunk) => {
@@ -10,9 +10,9 @@ function startServer(port: number): void {
     req.on('end', async () => {
       try {
         const headers = JSON.parse(JSON.stringify(req.headers));
+        console.log('REQ', `${upstreamUrl}:${port}${req.url}`, req.method, JSON.stringify(body), headers);
       // console.log('parsing JSON', body);
       // const data = JSON.parse(body);
-      // console.log(req.url, data, headers);
       // if (req.url === '/transaction/relay') {
       //   const doc = tub.repo.create();
       //   doc.on('change', ({ doc }) => {
@@ -23,20 +23,25 @@ function startServer(port: number): void {
       //     d.data = data
       //   });
       // }
-        const postRes = await fetch('http://branch.cc-server/transaction/relay', {
-          method: 'POST',
-          headers,
-          body
-        });
-        const respBody = await postRes.text();
-        console.log(postRes.status, respBody);
-        res.writeHead(postRes.status, postRes.statusText);
+        const params = {
+          method: req.method,
+          headers
+        };
+        if (body.length > 0) {
+          (params as unknown as { body: string }).body = body;
+        }
+        const upstreamRes = await fetch(`${upstreamUrl}${req.url}`, params);
+        const respBody = await upstreamRes.text();
+        res.setHeaders(upstreamRes.headers);
+        console.log('RES', upstreamRes.status, respBody, upstreamRes.headers);
+        res.writeHead(upstreamRes.status, upstreamRes.statusText);
         res.end(respBody);
       } catch (e) {
         console.error(e);
       }
     });
   }).listen(port);
+  console.log(`Proxying ${upstreamUrl}:${port} in front of ${upstreamUrl}`);
 }
   
 async function run(): Promise<void> {
@@ -46,7 +51,8 @@ async function run(): Promise<void> {
   // tub1.setText();
   // await tub2.setDoc(docUrl);
   // tub2.addText();
-  startServer(8080);
+  startProxy(8080, 'http://branch.cc-server');
+  startProxy(8090, 'http://twig.cc-server');
 }
 
 // ...
