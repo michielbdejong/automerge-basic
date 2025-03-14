@@ -110,7 +110,11 @@ async function run(): Promise<void> {
     "absolutePath": ["trunk","branch"],
     "validated_window":300,
   }, 'branch');
+  ledger.addAccount('admin');
   ledger.addAccount('alice');
+  ledger.addAccount('bob');
+  ledger.setTrunkward('trunk');
+  ledger.addLeafward('twig');
 
   startProxy(8060, 'http://twig.cc-server', toBackend);
   startProxy(8070, 'http://branch.cc-server', ledger.handle.bind(ledger));

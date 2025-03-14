@@ -77,6 +77,12 @@ export class Ledger {
   addAccount(name: string): void {
     this.accounts[name] = {};
   }
+  setTrunkward(name: string): void {
+    this.accounts[name] = {};
+  }
+  addLeafward(name: string): void {
+    this.accounts[name] = {};
+  }
 
   async proxy(data: {
     upstreamUrl: string,
