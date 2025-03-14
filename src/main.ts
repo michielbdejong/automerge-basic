@@ -26,7 +26,7 @@ function  analyseTraffic(data: {
     resBody
   } = data;
   console.log('REQ', `${upstreamUrl}:${port}${path}`, method, JSON.stringify(reqBody), reqHeaders);
-  console.log('RES', resStatus, resStatusText, resBody, resHeaders);
+  console.log('RES', resStatus, resStatusText, resBody, JSON.parse(JSON.stringify(resHeaders)));
   console.log('-------------------');
 }
 
@@ -104,7 +104,14 @@ function startProxy(port: number, upstreamUrl: string, handler: typeof toBackend
 }
   
 async function run(): Promise<void> {
-  const ledger = new Ledger();
+  const ledger = new Ledger({
+    format: "0",
+    "rate":1,
+    "absolutePath": ["trunk","branch"],
+    "validated_window":300,
+  }, 'branch');
+  ledger.addAccount('alice');
+
   startProxy(8060, 'http://twig.cc-server', toBackend);
   startProxy(8070, 'http://branch.cc-server', ledger.handle.bind(ledger));
   startProxy(8080, 'http://trunk.cc-server', toBackend);
