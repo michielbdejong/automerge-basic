@@ -11,7 +11,7 @@ export type LedgerAbout = {
 export class Ledger {
   private about: LedgerAbout;
   private accounts: {
-    [name: string]: object
+    [name: string]: { type: string }
   };
   private nodeName: string;
   constructor (about: LedgerAbout, nodeName: string) {
@@ -32,22 +32,27 @@ export class Ledger {
       resBody: ''
     }
   }
-  // async handleAccountsPlural(data: {
-  //   path: string,
-  //   reqHeaders: IncomingHttpHeaders
-  // }): Promise<{
-  //   resStatus: number,
-  //   resStatusText: string,
-  //   resHeaders: Headers,
-  //   resBody: string
-  //   }> {
-  //   return {
-  //     resStatus: 500,
-  //     resStatusText: 'Not implemented yet',
-  //     resHeaders: new Headers({}),
-  //     resBody: ''
-  //   }
-  // }
+  async handleAccountsPlural(): Promise<{
+    resStatus: number,
+    resStatusText: string,
+    resHeaders: Headers,
+    resBody: string
+    }> {
+    return {
+      resStatus: 200,
+      resStatusText: 'OK',
+      resHeaders: new Headers({
+        'Content-Type': 'application/json',
+      }),
+      resBody: JSON.stringify({
+        data: Object.keys(this.accounts).filter((name: string) => {
+          return (this.accounts[name].type === 'local');
+        }).map((name: string) => {
+           return this.about.absolutePath.join('/').concat(name);
+        }),
+      }),
+    };
+  }
   async handleAbout(): Promise<{
     resStatus: number,
     resStatusText: string,
@@ -74,14 +79,45 @@ export class Ledger {
       }),
     }
   }
+  async handleTransaction(data: {
+    path: string,
+  }): Promise<{
+    resStatus: number,
+    resStatusText: string,
+    resHeaders: Headers,
+    resBody: string
+    }> {
+    let resData: object;
+    const pathParts = data.path.split('/');
+    if (pathParts.length === 2) {
+      if (pathParts[1] === 'relay') {
+        resData = {};
+      }
+    } else if (pathParts.length === 3) {
+      if (pathParts[2] === 'P') {
+        resData = {};
+      }
+      if (pathParts[2] === 'C') {
+        resData = {};
+      }
+    }
+    return {
+      resStatus: 200,
+      resStatusText: 'OK',
+      resHeaders: new Headers({
+        'Content-Type': 'application/json',
+      }),
+      resBody: JSON.stringify(resData),
+    };
+  }
   addAccount(name: string): void {
-    this.accounts[name] = {};
+    this.accounts[name] = { type: 'local' };
   }
   setTrunkward(name: string): void {
-    this.accounts[name] = {};
+    this.accounts[name] = { type: 'trunkward' };
   }
   addLeafward(name: string): void {
-    this.accounts[name] = {};
+    this.accounts[name] = { type: 'leafward' };
   }
 
   async proxy(data: {
@@ -127,8 +163,15 @@ export class Ledger {
     if (data.path.startsWith('/forms')) {
       return this.handleForms();
     } else if (data.path.startsWith('/accounts')) {
-      // return this.handleAccountsPlural(data);
+      return this.handleAccountsPlural();
     } else if (data.path.startsWith('/account')) {
+      const urlParts = url.parse(data.path, true);
+      const accPath = (urlParts.query.acc_path as string).split('/');
+      if (accPath.length === 1 || accPath[0] === this.nodeName) {
+        // return this.handleAccountSingle(accPath[accPath.length - 1]);
+      } else {
+        return this.proxy(data);
+      }
       // return this.handleAccountSingle(data);
     } else if (data.path.startsWith('/entries')) {
       // return this.handleEntries(data);
@@ -138,7 +181,7 @@ export class Ledger {
       // return this.handleTransactionSingle(data);
     } else if (data.path.startsWith('/about')) {
       const urlParts = url.parse(data.path, true);
-      console.log(data.path, urlParts.query.node_path);
+      // console.log(data.path, urlParts.query.node_path);
       if ((urlParts.query.node_path === undefined) || (urlParts.query.node_path === this.nodeName)) {
         return this.handleAbout();
       } else {
