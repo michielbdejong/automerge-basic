@@ -1,4 +1,12 @@
+import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { Tub } from './tub.js';
+
+createServer((req: IncomingMessage, res: ServerResponse) => {
+  req.on('data', (chunk) => {
+    console.log(chunk);
+  });
+  res.end('ok');
+}).listen(8080);
 
 async function run(): Promise<void> {
   const tub1 = new Tub('1');
