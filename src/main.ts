@@ -11,7 +11,7 @@ function  analyseTraffic(data: {
   reqHeaders: IncomingHttpHeaders,
   resStatus: number,
   resStatusText: string,
-  resHeaders: Headers,
+  resHeaders: { [key: string]: string },
   resBody: string
 }): void {
   const {
@@ -28,7 +28,7 @@ function  analyseTraffic(data: {
     resBody
   } = data;
   console.log('REQ', `[${upstreamUrl}:${port}>${backendUrl}]${path}`, method, JSON.stringify(reqBody), reqHeaders);
-  console.log('RES', resStatus, resStatusText, resBody, JSON.parse(JSON.stringify(resHeaders)));
+  console.log('RES', resStatus, resStatusText, resBody, resHeaders);
   console.log('-------------------');
 }
 
@@ -41,7 +41,7 @@ async function toBackend(data: {
 }): Promise<{
   resStatus: number,
   resStatusText: string,
-  resHeaders: Headers,
+  resHeaders: { [key: string]: string },
   resBody: string
 }> {
   const params = {
@@ -53,10 +53,15 @@ async function toBackend(data: {
   }
   const upstreamRes = await fetch(`${data.backendUrl}${data.path}`, params);
   const resBody = await upstreamRes.text();
+  const resHeaders: { [key: string]: string } = {};
+  for (const header of upstreamRes.headers as any) {
+    resHeaders[header[0]] = header[1];
+  }
+
   return {
     resStatus: upstreamRes.status,
     resStatusText: upstreamRes.statusText,
-    resHeaders: upstreamRes.headers,
+    resHeaders,
     resBody
   }
 }
@@ -81,8 +86,9 @@ function startProxy(port: number, upstreamUrl: string, handler: typeof toBackend
           reqBody: body,
           reqHeaders: req.headers
         });
-        
-        res.setHeaders(resHeaders);
+        Object.keys(resHeaders).forEach(key => {
+          res.setHeader(key, resHeaders[key]);
+        });
         analyseTraffic({
           upstreamUrl,
           backendUrl: (backendUrl ? backendUrl : upstreamUrl),
@@ -120,9 +126,11 @@ async function run(): Promise<void> {
   ledger.addLeafward('twig');
 
   startProxy(8060, 'http://twig.cc-server', toBackend);
-  startProxy(8070, 'http://branch.cc-server', ledger.handle.bind(ledger));
+  // startProxy(8070, 'http://branch.cc-server', ledger.handle.bind(ledger));
+  startProxy(8070, 'http://branch.cc-server', toBackend);
   startProxy(8080, 'http://trunk.cc-server', toBackend);
   startProxy(8090, 'http://branch2.cc-server', toBackend, 'http://komunitin-accounting-1:2025/NET2/cc');
+  // startProxy(8090, 'http://branch2.cc-server', toBackend);
 }
 
 // ...
