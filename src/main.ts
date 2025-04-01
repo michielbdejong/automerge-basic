@@ -3,6 +3,7 @@ import { Ledger } from './ledger.js';
 
 function  analyseTraffic(data: {
   upstreamUrl: string,
+  backendUrl: string,
   port: number,
   path: string,
   method: string,
@@ -15,6 +16,7 @@ function  analyseTraffic(data: {
 }): void {
   const {
     upstreamUrl,
+    backendUrl,
     port,
     path,
     method,
@@ -25,13 +27,13 @@ function  analyseTraffic(data: {
     resHeaders,
     resBody
   } = data;
-  console.log('REQ', `${upstreamUrl}:${port}${path}`, method, JSON.stringify(reqBody), reqHeaders);
+  console.log('REQ', `[${upstreamUrl}:${port}>${backendUrl}]${path}`, method, JSON.stringify(reqBody), reqHeaders);
   console.log('RES', resStatus, resStatusText, resBody, JSON.parse(JSON.stringify(resHeaders)));
   console.log('-------------------');
 }
 
 async function toBackend(data: {
-  upstreamUrl: string,
+  backendUrl: string,
   path: string,
   method: string,
   reqBody: string,
@@ -49,7 +51,7 @@ async function toBackend(data: {
   if (data.reqBody.length > 0) {
     (params as unknown as { body: string }).body = data.reqBody;
   }
-  const upstreamRes = await fetch(`${data.upstreamUrl}${data.path}`, params);
+  const upstreamRes = await fetch(`${data.backendUrl}${data.path}`, params);
   const resBody = await upstreamRes.text();
   return {
     resStatus: upstreamRes.status,
@@ -59,7 +61,7 @@ async function toBackend(data: {
   }
 }
 
-function startProxy(port: number, upstreamUrl: string, handler: typeof toBackend): void {
+function startProxy(port: number, upstreamUrl: string, handler: typeof toBackend, backendUrl?: string): void {
   createServer((req: IncomingMessage, res: ServerResponse) => {
     let body = '';
     req.on('data', (chunk) => {
@@ -73,7 +75,7 @@ function startProxy(port: number, upstreamUrl: string, handler: typeof toBackend
           resHeaders,
           resBody
         } = await handler({
-          upstreamUrl,
+          backendUrl: (backendUrl ? backendUrl : upstreamUrl),
           path: req.url,
           method: req.method,
           reqBody: body,
@@ -83,6 +85,7 @@ function startProxy(port: number, upstreamUrl: string, handler: typeof toBackend
         res.setHeaders(resHeaders);
         analyseTraffic({
           upstreamUrl,
+          backendUrl: (backendUrl ? backendUrl : upstreamUrl),
           port,
           path: req.url,
           method: req.method,
@@ -119,7 +122,7 @@ async function run(): Promise<void> {
   startProxy(8060, 'http://twig.cc-server', toBackend);
   startProxy(8070, 'http://branch.cc-server', ledger.handle.bind(ledger));
   startProxy(8080, 'http://trunk.cc-server', toBackend);
-  startProxy(8090, 'http://branch2.cc-server', toBackend);
+  startProxy(8090, 'http://branch2.cc-server', toBackend, 'http://komunitin-accounting-1:2025/NET2/cc');
 }
 
 // ...
