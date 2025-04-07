@@ -110,7 +110,7 @@ function startProxy(port: number, upstreamUrl: string, handler: typeof toBackend
       }
     });
   }).listen(port);
-  console.log(`Proxying ${upstreamUrl}:${port} in front of ${upstreamUrl}`);
+  console.log(`Proxying ${upstreamUrl}:${port} in front of ${backendUrl}`);
 }
   
 async function run(): Promise<void> {
