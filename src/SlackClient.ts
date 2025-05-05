@@ -1,5 +1,6 @@
-import { App as BoltApp } from "@slack/bolt";
 import { randomBytes } from "node:crypto";
+const bolt = await import('@slack/bolt');
+const App = bolt.default.App;
 
 const BOLT_PORT = 7000;
 export interface IMessage {
@@ -50,11 +51,12 @@ export interface User {
 }
 
 export class SlackClient {
-  private boltApp: BoltApp;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private app: any;
   private logins: { [nonce: string]: string } = {};
   private logouts: { [nonce: string]: string } = {};
   constructor() {
-    this.boltApp = new BoltApp({
+    this.app = new App({
       signingSecret: process.env.SLACK_SIGNING_SECRET,
       token: process.env.SLACK_BOT_USER_TOKEN,
       appToken: process.env.SLACK_APP_TOKEN,
@@ -64,7 +66,7 @@ export class SlackClient {
   }
   
   async create(EXPRESS_FULL_URL: string): Promise<void> {
-    this.boltApp.command("/tubs-connect", async ({ command, ack }) => {
+    this.app.command("/tubs-connect", async ({ command, ack }) => {
       const uuid = command.user_id;
       const nonce = randomBytes(16).toString('hex');
       this.logins[nonce] = uuid;
@@ -73,7 +75,7 @@ export class SlackClient {
     });
     
     
-    this.boltApp.command("/tubs-disconnect", async ({ command, ack }) => {
+    this.app.command("/tubs-disconnect", async ({ command, ack }) => {
       const uuid = command.user_id;
       const nonce = randomBytes(16).toString('hex');
       this.logouts[nonce] = uuid;
@@ -82,20 +84,20 @@ export class SlackClient {
     });
     
     
-    this.boltApp.message(async ({ message }) => {
+    this.app.message(async ({ message }) => {
       console.info("----------onMessage-----------");
       
       // Get workspace id
-      const { team } = await this.boltApp.client.team.info()
+      const { team } = await this.app.client.team.info()
       
       // Get members of this Slack conversation
-      const { members } = await this.boltApp.client.conversations.members({ channel: message.channel });
+      const { members } = await this.app.client.conversations.members({ channel: message.channel });
       
       // Slack user ID of the message sender
       const slackUUID = (message as IMessage).user;
       
       // User's Slack profile info is used to look for their Solid webId
-      const userInfo = await this.boltApp.client.users.info({ user: slackUUID })
+      const userInfo = await this.app.client.users.info({ user: slackUUID })
       console.log(team, members, userInfo)
       
       
@@ -108,6 +110,6 @@ export class SlackClient {
     });
   }
   async start(port: number): Promise<void> {
-    await this.boltApp.start(port);
+    await this.app.start(port);
   }
 }
