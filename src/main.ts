@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { createServer, IncomingMessage, ServerResponse } from 'http';
-// import { Tub } from './tub.js';
+import { Tub } from './tub.js';
 import { SlackClient } from './SlackClient.js';
 
 createServer((req: IncomingMessage, res: ServerResponse) => {
@@ -12,12 +12,12 @@ createServer((req: IncomingMessage, res: ServerResponse) => {
 
 async function run(): Promise<void> {
   await startSlackClient();
-  // const tub1 = new Tub('1');
-  // const tub2 = new Tub('2');
-  // const docUrl = tub1.createDoc();
-  // tub1.setText();
-  // await tub2.setDoc(docUrl);
-  // tub2.addText();
+  const tub1 = new Tub('1');
+  const tub2 = new Tub('2');
+  const docUrl = tub1.createDoc();
+  tub1.setText();
+  await tub2.setDoc(docUrl);
+  tub2.addText();
 }
 async function startSlackClient(): Promise<void> {
   const slackClient = new SlackClient();

@@ -1,6 +1,7 @@
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 import { Repo, DocHandle } from "@automerge/automerge-repo";
-import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket";
+import { BroadcastChannelNetworkAdapter } from "@automerge/automerge-repo-network-broadcastchannel";
+// import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket";
 import { NodeFSStorageAdapter } from "@automerge/automerge-repo-storage-nodefs";
 
 export class Tub {
@@ -9,7 +10,8 @@ export class Tub {
   name: string;
   constructor(name: string) {
     this.repo = new Repo({
-      network: [new BrowserWebSocketClientAdapter('wss://sync.automerge.org')],
+      // network: [new BrowserWebSocketClientAdapter('wss://sync.automerge.org')],
+      network: [ new BroadcastChannelNetworkAdapter() ],
       storage: new NodeFSStorageAdapter('./data'),
     });
     this.name = name;
