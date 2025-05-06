@@ -13,7 +13,7 @@ createServer((req: IncomingMessage, res: ServerResponse) => {
 async function run(): Promise<void> {
   const tub1 = new Tub('1');
   const tub2 = new Tub('2');
-  const docUrl = tub1.createDoc();
+  const docUrl = await tub1.createDoc();
   await startSlackClient(tub1);
   await tub2.setDoc(docUrl);
 }
