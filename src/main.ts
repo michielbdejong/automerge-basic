@@ -15,9 +15,7 @@ async function run(): Promise<void> {
   const tub2 = new Tub('2');
   const docUrl = tub1.createDoc();
   await startSlackClient(tub1);
-  tub1.setText();
   await tub2.setDoc(docUrl);
-  tub2.addText();
 }
 
 function makeLocalId(parts: string[]): string {

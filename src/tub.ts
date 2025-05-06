@@ -1,6 +1,6 @@
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 import { randomUUID } from "node:crypto";
-import { Repo, DocHandle, DocHandleChangePayload } from "@automerge/automerge-repo";
+import { Repo, DocHandle } from "@automerge/automerge-repo";
 import { BroadcastChannelNetworkAdapter } from "@automerge/automerge-repo-network-broadcastchannel";
 // import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket";
 import { NodeFSStorageAdapter } from "@automerge/automerge-repo-storage-nodefs";
@@ -60,44 +60,4 @@ export class Tub {
       d.objects[uuid] = value;
     });
   }
-  setText(): void {
-    console.log(`Setting doc text in repo ${this.name}`);
-    this.doc.change((d: { text: string }) => {
-      d.text = 'hello'
-    });
-  }
-  addText(): void {
-    console.log(`Changing doc text in repo ${this.name}`);
-    this.doc.change((d: { text: string }) => {
-      d.text += ' world'
-    });
-  }
-  test(): void {
-    console.log('1');
-    this.doc.change(d => {
-      d['foo'] = 'bar';
-    });
-    console.log('2');
-    console.log(this.doc['foo']);
-    console.log('3');
-  }
 }
-
-
-// ...
-const repo = new Repo({
-  network: [ ],
-  storage: new NodeFSStorageAdapter('./data'),
-});
-const doc: DocHandle<unknown> = repo.create();
-doc.on('change', ({ doc } : DocHandleChangePayload<unknown>): void => {
-  console.log(`new doc contents in stand-alone repo is`, JSON.stringify(doc, null, 2));
-});
-console.log('1');
-doc.change(d => {
-  d['foo'] = 'bar';
-});
-console.log('2');
-console.log(doc['foo']);
-console.log((doc as any).foo);
-console.log('3');
