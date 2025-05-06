@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { EventEmitter } from 'node:events';
 const bolt = await import('@slack/bolt');
 const App = bolt.default.App;
 
@@ -50,12 +51,13 @@ export interface User {
   has_2fa:             boolean;
 }
 
-export class SlackClient {
+export class SlackClient extends EventEmitter {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private app: any;
   private logins: { [nonce: string]: string } = {};
   private logouts: { [nonce: string]: string } = {};
   constructor() {
+    super();
     this.app = new App({
       signingSecret: process.env.SLACK_SIGNING_SECRET,
       token: process.env.SLACK_BOT_USER_TOKEN,
@@ -85,28 +87,7 @@ export class SlackClient {
     
     
     this.app.message(async ({ message }) => {
-      console.info("----------onMessage-----------");
-      
-      // Get workspace id
-      const { team } = await this.app.client.team.info()
-      
-      // Get members of this Slack conversation
-      const { members } = await this.app.client.conversations.members({ channel: message.channel });
-      
-      // Slack user ID of the message sender
-      const slackUUID = (message as IMessage).user;
-      
-      // User's Slack profile info is used to look for their Solid webId
-      const userInfo = await this.app.client.users.info({ user: slackUUID })
-      console.log(team, members, userInfo)
-      
-      
-      try {
-        // Create a copy of the message in the pods of all the members of the conversation who have a
-        // Solid session with us.
-      } catch (error: unknown) {
-        console.error(error instanceof Error ? error.message : JSON.stringify(error));
-      }
+      this.emit('message', message);
     });
   }
   async start(port: number): Promise<void> {

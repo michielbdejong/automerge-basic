@@ -1,4 +1,5 @@
 /* eslint-disable  @typescript-eslint/no-explicit-any */
+import { randomUUID } from "node:crypto";
 import { Repo, DocHandle } from "@automerge/automerge-repo";
 import { BroadcastChannelNetworkAdapter } from "@automerge/automerge-repo-network-broadcastchannel";
 // import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket";
@@ -16,26 +17,56 @@ export class Tub {
     });
     this.name = name;
   }
+  handleChange({ doc} : { doc: DocHandle<unknown> }): void {
+    console.log(`new doc contents in repo ${this.name} is`, JSON.stringify(doc, null, 2));
+  }
   createDoc(): string {
     this.doc = this.repo.create();
-    this.doc.on('change', ({ doc }) => {
-      console.log(`new text in repo ${this.name} is`, (doc as any).text);
-    });
+    this.doc.on('change', this.handleChange.bind(this));
     console.log(`doc created in repo ${this.name}`, this.doc.documentId);
     return this.doc.documentId;
   }
   async setDoc(docUrl: string): Promise<void> {
     console.log(`finding doc in repo ${this.name}`, docUrl);
     this.doc = this.repo.find(docUrl as any);
-    this.doc.on('change', ({ doc }) => {
-      console.log(`new text in repo ${this.name} is`, (doc as any).text);
-    });
+    this.doc.on('change', this.handleChange.bind(this));
     do {
       console.log(`waiting for doc ${this.name} to be ready`);
       await new Promise(x => setTimeout(x, 1000));
     } while (!this.doc.isReady());
   }
-
+  async getId(localId: string): Promise<string> {
+    let minted: string | undefined;
+    console.log('1');
+    if (typeof this.doc['dataIndex'] === 'undefined') {
+      console.log('1a');
+      this.doc.change((d: { [key: string]: any }) => {
+        minted = randomUUID();
+        d['dataIndex'] = {
+          [localId]: minted
+        };
+      });
+      console.log('1b');
+    }
+    console.log('current this.doc', this.doc);
+    console.log('2');
+    if (typeof this.doc['dataIndex'][localId] === 'undefined') {
+      this.doc.change((d: { [key: string]: any }) => {
+        minted = randomUUID();
+        d['dataIndex'][localId] = minted;
+      });
+    }
+    console.log('3');
+    return minted || this.doc['dataIndex'][localId];
+  }
+  setData(uuid: string, value: unknown): void {
+    this.doc.change((d: any) => {
+      if (typeof d.objects === 'undefined') {
+        d.objects = {};
+      }
+      d.objects[uuid] = value;
+    });
+  }
   setText(): void {
     console.log(`Setting doc text in repo ${this.name}`);
     this.doc.change((d: { text: string }) => {
@@ -47,5 +78,14 @@ export class Tub {
     this.doc.change((d: { text: string }) => {
       d.text += ' world'
     });
+  }
+  test(): void {
+    console.log('1');
+    this.doc.change(d => {
+      d['foo'] = 'bar';
+    });
+    console.log('2');
+    console.log(this.doc['foo']);
+    console.log('3');
   }
 }
