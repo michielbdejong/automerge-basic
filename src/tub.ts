@@ -36,28 +36,21 @@ export class Tub {
     } while (!this.doc.isReady());
   }
   async getId(localId: string): Promise<string> {
-    let minted: string | undefined;
-    console.log('1');
-    if (typeof this.doc['dataIndex'] === 'undefined') {
-      console.log('1a');
+    let docState = await this.doc.doc();
+    if (typeof docState['dataIndex'] === 'undefined') {
       this.doc.change((d: { [key: string]: any }) => {
-        minted = randomUUID();
-        d['dataIndex'] = {
-          [localId]: minted
-        };
+        d['dataIndex'] = {};
       });
-      console.log('1b');
+      docState = await this.doc.doc();
     }
-    console.log('current this.doc', this.doc);
-    console.log('2');
-    if (typeof this.doc['dataIndex'][localId] === 'undefined') {
+    if (typeof docState['dataIndex'][localId] === 'undefined') {
       this.doc.change((d: { [key: string]: any }) => {
-        minted = randomUUID();
-        d['dataIndex'][localId] = minted;
+        d['dataIndex'][localId] = randomUUID();
       });
+      docState = await this.doc.doc();
     }
     console.log('3');
-    return minted || this.doc['dataIndex'][localId];
+    return docState['dataIndex'][localId];
   }
   setData(uuid: string, value: unknown): void {
     this.doc.change((d: any) => {
