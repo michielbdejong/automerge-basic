@@ -1,27 +1,30 @@
 /* eslint-disable  @typescript-eslint/no-explicit-any */
-import { randomUUID } from "node:crypto";
-import { Repo, DocHandle } from "@automerge/automerge-repo";
-import { BroadcastChannelNetworkAdapter } from "@automerge/automerge-repo-network-broadcastchannel";
+import { randomUUID } from 'node:crypto';
+import { Repo, DocHandle } from '@automerge/automerge-repo';
+import { BroadcastChannelNetworkAdapter } from '@automerge/automerge-repo-network-broadcastchannel';
 // import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket";
-import { NodeFSStorageAdapter } from "@automerge/automerge-repo-storage-nodefs";
+import { NodeFSStorageAdapter } from '@automerge/automerge-repo-storage-nodefs';
 
 export class Tub {
   repo: Repo;
   docHandle: DocHandle<unknown>;
   doc: {
-    [dict: string]: { [key: string]: string }
+    [dict: string]: { [key: string]: string };
   };
   name: string;
   constructor(name: string) {
     this.repo = new Repo({
       // network: [new BrowserWebSocketClientAdapter('wss://sync.automerge.org')],
-      network: [ new BroadcastChannelNetworkAdapter() ],
+      network: [new BroadcastChannelNetworkAdapter()],
       storage: new NodeFSStorageAdapter('./data'),
     });
     this.name = name;
   }
-  handleChange({ doc } : { doc: DocHandle<unknown> }): void {
-    console.log(`new doc contents in repo ${this.name} is`, JSON.stringify(doc, null, 2));
+  handleChange({ doc }: { doc: DocHandle<unknown> }): void {
+    console.log(
+      `new doc contents in repo ${this.name} is`,
+      JSON.stringify(doc, null, 2),
+    );
   }
   async createDoc(): Promise<string> {
     this.docHandle = this.repo.create();
@@ -37,11 +40,11 @@ export class Tub {
     this.docHandle.on('change', this.handleChange.bind(this));
     do {
       console.log(`waiting for doc ${this.name} to be ready`);
-      await new Promise(x => setTimeout(x, 1000));
+      await new Promise((x) => setTimeout(x, 1000));
     } while (!this.docHandle.isReady());
   }
   async setDictValue(dict: string, key: string, value: any): Promise<void> {
-    this.docHandle.change(d => {
+    this.docHandle.change((d) => {
       if (typeof d[dict] === 'undefined') {
         d[dict] = {};
       }
@@ -51,7 +54,10 @@ export class Tub {
     return value;
   }
   async getDictValue(dict: string, key: string): Promise<any> {
-    if (typeof this.doc[dict] === 'undefined' || typeof this.doc[dict][key] === 'undefined' ) {
+    if (
+      typeof this.doc[dict] === 'undefined' ||
+      typeof this.doc[dict][key] === 'undefined'
+    ) {
       return this.setDictValue(dict, key, randomUUID());
     }
     return this.doc[dict][key];
