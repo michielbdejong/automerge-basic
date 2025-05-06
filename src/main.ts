@@ -13,7 +13,7 @@ createServer((req: IncomingMessage, res: ServerResponse) => {
 async function run(): Promise<void> {
   const tub1 = new Tub('1');
   const tub2 = new Tub('2');
-  const docUrl = tub1.createDoc();
+  const docUrl = await tub1.createDoc();
   await startSlackClient(tub1);
   await tub2.setDoc(docUrl);
 }
@@ -26,14 +26,18 @@ async function startSlackClient(tub: Tub): Promise<void> {
   await slackClient.create('');
   await slackClient.start(8080);
   slackClient.on('message', async (message: IMessage) => {
-    console.info("----------onMessage-----------");
-    const tubsChannelId = await tub.getId(makeLocalId(['slack', 'channel', message.channel]));
-    const tubsMsgId = await tub.getId(makeLocalId(['slack', 'message', message.client_msg_id]));
+    console.info('----------onMessage-----------');
+    const tubsChannelId = await tub.getId(
+      makeLocalId(['slack', 'channel', message.channel]),
+    );
+    const tubsMsgId = await tub.getId(
+      makeLocalId(['slack', 'message', message.client_msg_id]),
+    );
     const messageToStore = {
       id: tubsMsgId,
       text: message.text,
       channel: tubsChannelId,
-    }
+    };
     tub.setData(tubsMsgId, messageToStore);
     console.log(JSON.stringify(message, null, 2));
   });
