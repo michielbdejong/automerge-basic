@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { Tub } from './tub.js';
 import { SlackClient, IMessage } from './SlackClient.js';
+import { SolidClient } from './SolidClient.js';
 
 createServer((req: IncomingMessage, res: ServerResponse) => {
   req.on('data', (chunk) => {
@@ -16,6 +17,14 @@ async function run(): Promise<void> {
   const docUrl = await tub1.createDoc();
   await startSlackClient(tub1);
   await tub2.setDoc(docUrl);
+  const solid = new SolidClient();
+  await solid.connect();
+  const res = await solid.fetch('https://michielbdejong.solidcommunity.net/', {
+    headers: {
+      'Accept': 'application/ld+json',
+    },
+  });
+  console.log(await res.json());
 }
 
 function makeLocalId(parts: string[]): string {
