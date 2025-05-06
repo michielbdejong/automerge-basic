@@ -1,11 +1,20 @@
-import { Tub } from './tub.js';
+/* eslint-disable  @typescript-eslint/no-explicit-any */
+import { Repo, DocHandle, DocHandleChangePayload } from "@automerge/automerge-repo";
+import { NodeFSStorageAdapter } from "@automerge/automerge-repo-storage-nodefs";
 
-const test = new Tub('test');
-test.createDoc();
+const repo = new Repo({
+  network: [ ],
+  storage: new NodeFSStorageAdapter('./data'),
+});
+const doc: DocHandle<unknown> = repo.create();
+doc.on('change', ({ doc } : DocHandleChangePayload<unknown>): void => {
+  console.log(`new doc contents in stand-alone repo is`, JSON.stringify(doc, null, 2));
+});
 console.log('1');
-test.doc.change(d => {
+doc.change(d => {
   d['foo'] = 'bar';
 });
 console.log('2');
-console.log(test.doc['foo']);
+console.log(doc['foo']);
+console.log((doc as any).foo);
 console.log('3');
