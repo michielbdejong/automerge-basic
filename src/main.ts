@@ -22,7 +22,7 @@ async function run(): Promise<void> {
   const slackChannelId = slack.makeChannelId(process.env.CHANNEL_IN_SLACK);
 
   const solid = new SolidClient();
-  const solidChannelId = solid.makeChannelId(process.env.CHANNEL_IN_SLACK);
+  const solidChannelId = solid.makeChannelId(process.env.CHANNEL_IN_SOLID);
   
   await slack.listen(tub1, 8080, {
     [slackChannelId]: solidChannelId
