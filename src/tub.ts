@@ -5,11 +5,52 @@ import { BroadcastChannelNetworkAdapter } from '@automerge/automerge-repo-networ
 // import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket";
 import { NodeFSStorageAdapter } from '@automerge/automerge-repo-storage-nodefs';
 
-export type LocalIdSpec = {
-  model: string,
-  localId: string
-};
+export function setDocEntry(doc:{ [index: string]: any }, nesting: string[], value: any): void {
+  return _setDocEntry(doc, JSON.parse(JSON.stringify(nesting)), value);
+}
+function _setDocEntry(doc:{ [index: string]: any }, nesting: string[], value: any): void {
+    console.log('setDocEntry 1', doc, nesting, value);
+  if (nesting.length === 0) {
+    console.log('setDocEntry 2', doc, nesting, value);
+    throw new Error('cannot set value of doc itself');
+  } else if (nesting.length === 1) {
+    console.log('setDocEntry 3', doc, nesting, value);
+    doc[nesting[0]] = value;
+  } else {
+    console.log('setDocEntry 4', doc, nesting, value);
+    const firstKey = nesting.shift();
+    if (typeof doc[firstKey] === 'undefined') {
+      console.log('setDocEntry 5', doc, nesting, value);
+      doc[firstKey] = {};
+    }
+    console.log('setDocEntry 6', doc, nesting, value);
+    _setDocEntry(doc[firstKey], nesting, value);
+  }
+  console.log('setDocEntry 7', doc, nesting, value);
+}
 
+export function getDocEntry(doc:{ [index: string]: any }, nesting: string[]): any {
+  return _getDocEntry(doc, JSON.parse(JSON.stringify(nesting)));
+}
+function _getDocEntry(doc:{ [index: string]: any }, nesting: string[]): any {
+    console.log('getDocEntry 1', doc, nesting);
+  if (nesting.length === 0) {
+    console.log('getDocEntry 2', doc, nesting);
+    return;
+  } else if (nesting.length === 1) {
+    console.log('getDocEntry 3', doc, nesting);
+    return doc[nesting[0]];
+  } else {
+    console.log('getDocEntry 4', doc, nesting);
+    const firstKey = nesting.shift();
+    if (typeof doc[firstKey] === 'undefined') {
+      console.log('getDocEntry 5', doc, nesting);
+      return;
+    }
+    console.log('getDocEntry 6', doc, nesting);
+    return _getDocEntry(doc[firstKey], nesting);
+  }
+}
 
 export class Tub {
   repo: Repo;
@@ -26,12 +67,6 @@ export class Tub {
     });
     this.platform = platform;
   }
-
-  idSpecToStr(from: LocalIdSpec): string {
-    console.log(`Tub ${this.platform} converting IdSpec to string`, from);
-    return `${this.platform}:${from.model}:${from.localId}`;
-  }
-
   handleChange(data: { doc: DocHandle<unknown>, patchInfo: { before: object, after: object, source: string } }): void {
     console.log(
       `new doc contents in repo ${this.platform} is`,
@@ -61,48 +96,42 @@ export class Tub {
     this.docHandle = this.repo.find(docUrl as any);
     return this.setupDoc();
   }
-  async setDictValue(dict: string, key: LocalIdSpec, altKey: LocalIdSpec | undefined, value: any): Promise<void> {
-    console.log('setDictValue', dict, key, altKey, value);
+  async setDictValue(key: string[], altKey: string[] | undefined, value: any): Promise<void> {
+    console.log('setDictValue', key, altKey, value);
     this.docHandle.change((d) => {
-      if (typeof d[dict] === 'undefined') {
-        d[dict] = {};
-      }
-      d[dict][this.idSpecToStr(key)] = value;
+      setDocEntry(d, key, value);
       if (altKey) {
-        d[dict][this.idSpecToStr(altKey)] = value;
+       setDocEntry(d, altKey, value);
       }
     });
     this.doc = await this.docHandle.doc();
     console.log(`this.doc updated in ${this.platform}`, typeof this.doc);
     return value;
   }
-  async ensureCopied(dict: string, existingKey: LocalIdSpec, otherKey?: LocalIdSpec): Promise<any> {
-    console.log('ensureCopied', dict, existingKey, otherKey);
-
-    if (otherKey && typeof this.doc[dict][this.idSpecToStr(otherKey)] === 'undefined') {
-      await this.setDictValue(dict, otherKey, undefined, this.doc[dict][this.idSpecToStr(existingKey)]); 
+  async ensureCopied(existingKey: string[], otherKey?: string[]): Promise<any> {
+    console.log('ensureCopied', existingKey, otherKey);
+    const entry = getDocEntry(this.doc, existingKey);
+    if (otherKey && typeof getDocEntry(this.doc, otherKey) === 'undefined') {
+      await this.setDictValue(otherKey, undefined, entry); 
     }
-    return this.doc[dict][this.idSpecToStr(existingKey)];
+    return entry;
   }
-  async getDictValue(dict: string, key: LocalIdSpec, altKey?: LocalIdSpec): Promise<any> {
-    console.log('getDictValue', dict, key, altKey);
+  async getDictValue(key: string[], altKey?: string[]): Promise<any> {
+    console.log('getDictValue', key, altKey);
  
-    if (typeof this.doc[dict] === 'undefined') {
-      return this.setDictValue(dict, key, altKey, randomUUID());
+    if (getDocEntry(this.doc, key)) {
+      return this.ensureCopied(key, altKey);
     }
-    if (this.doc[dict][this.idSpecToStr(key)]) {
-      return this.ensureCopied(dict, key, altKey);
+    if (altKey && getDocEntry(this.doc, altKey)) {
+      return this.ensureCopied(altKey, key);
     }
-    if (altKey && this.doc[dict][this.idSpecToStr(altKey)]) {
-      return this.ensureCopied(dict, altKey, key);
-    }
-    return this.setDictValue(dict, key, altKey, randomUUID());
+    return this.setDictValue(key, altKey, randomUUID());
   }
-  async getId(localId: LocalIdSpec, altId?: LocalIdSpec): Promise<string> {
-    return this.getDictValue('index', localId, altId);
+  async getId(localId: string[], altId?: string[]): Promise<string> {
+    return this.getDictValue(localId, altId);
   }
-  async setData(uuidSpec: LocalIdSpec, value: unknown): Promise<void> {
-    return this.setDictValue('objects', uuidSpec, undefined, value);
+  async setData(uuidSpec: string[], value: unknown): Promise<void> {
+    return this.setDictValue(uuidSpec, undefined, value);
   }
 }
 

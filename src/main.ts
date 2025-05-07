@@ -25,12 +25,12 @@ async function run(): Promise<void> {
   const solidChannelId = solid.makeChannelId(process.env.CHANNEL_IN_SOLID);
   
   await slack.listen(slackTub, 8080, {
-    [slackTub.idSpecToStr(slackChannelId)]: solidChannelId
+    [slackChannelId.join(':')]: solidChannelId
   });
 
   await solid.connect();
   await solid.listen(solidTub, {
-    [solidTub.idSpecToStr(solidChannelId)]: slackChannelId
+    [solidChannelId.join(':')]: slackChannelId
   });
   // await solid.createChat('https://michielbdejong.solidcommunity.net/IndividualChats/bla', 'Bla Chat');
   // const read = await solid.readChat('https://michielbdejong.solidcommunity.net/IndividualChats/blactbd1Z/index.ttl#this');

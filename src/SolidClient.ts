@@ -1,7 +1,7 @@
 import { v7 } from "css-authn";
 import {Fetcher, graph, UpdateManager, AutoInitOptions, IndexedFormula } from "rdflib";
 import ChatsModuleRdfLib, { ChatsModule } from "@solid-data-modules/chats-rdflib";
-import { LocalIdSpec, Tub } from "./tub.js";
+import { Tub } from "./tub.js";
 
 export class SolidClient {
   fetch: typeof globalThis.fetch;
@@ -62,13 +62,10 @@ export class SolidClient {
     return containerUri + dateFolders + "/chat.ttl";
   }
   
-  makeChannelId(solidChannelId: string): LocalIdSpec {
-    return {
-      model: 'channel',
-      localId: solidChannelId,
-    };
+  makeChannelId(solidChannelId: string): string[] {
+    return ['index', 'solid', 'channel', solidChannelId];
   }
-  async listen(tub: Tub, equivalences: { [slack: string]: LocalIdSpec }): Promise<void> {
+  async listen(tub: Tub, equivalences: { [slack: string]: string[] }): Promise<void> {
     const topic = process.env.CHANNEL_IN_SOLID;
     const todayDoc = this.getTodayDoc(topic);
     const streamingUrl = `https://solidcommunity.net/.notifications/StreamingHTTPChannel2023/${encodeURIComponent(todayDoc)}`;
@@ -92,14 +89,14 @@ export class SolidClient {
         latestMessages: { uri: string, text: string, date: Date, authorWebId: string }[],
       } = await this.module.readChat(topic);
       const localId = this.makeChannelId(topic);
-      const tubsChannelId = await tub.getId(localId, equivalences[tub.idSpecToStr(localId)]);
+      const tubsChannelId = await tub.getId(localId, equivalences[localId.join(':')]);
       await Promise.all(latestMessages.map(async (entry) => {
-        console.log('getting Id for message', { model: 'message', localId: entry.uri });
-        const msgId = await tub.getId({ model: 'message', localId: entry.uri });
-        console.log('getting Id for author', { model: 'author', localId: entry.authorWebId });
-        const authorId = await tub.getId({ model: 'author', localId: entry.authorWebId });
-        tub.setData({ model: 'message', localId: msgId }, {
-          id: msgId,
+        console.log('getting Id for message', [ 'index', 'message', entry.uri ]);
+        const tubsMsgId = await tub.getId(['index', 'message', entry.uri ]);
+        console.log('getting Id for author', [ 'index', 'author', entry.authorWebId ]);
+        const authorId = await tub.getId([ 'index', 'author', entry.authorWebId ]);
+        tub.setData([ 'objects', 'message', tubsMsgId ], {
+          id: tubsMsgId,
           text: entry.text,
           date: entry.date,
           authorId: authorId,
