@@ -1,6 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 const bolt = await import('@slack/bolt');
+import { Tub, LocalIdSpec, idSpecToStr } from './tub.js';
+
 const App = bolt.default.App;
 
 const BOLT_PORT = 7000;
@@ -87,7 +89,33 @@ export class SlackClient extends EventEmitter {
       this.emit('message', message);
     });
   }
-  async start(port: number): Promise<void> {
-    await this.app.start(port);
+  makeChannelId(slackChannelId: string): LocalIdSpec {
+    return {
+      platform: 'slack',
+      model: 'channel',
+      localId: slackChannelId
+    };
   }
+
+  async listen(tub: Tub, port: number, equivalences: { [slack: string]: LocalIdSpec }): Promise<void> {
+    await this.create('');
+    await this.app.start(port);
+    this.on('message', async (message: IMessage) => {
+      console.info('----------onMessage-----------');
+      const localId = this.makeChannelId(message.channel);
+      const tubsChannelId = await tub.getId(localId, equivalences[idSpecToStr(localId)]);
+      const tubsMsgId = await tub.getId({
+        platform: 'slack',
+        model: 'message',
+        localId: message.client_msg_id
+      });
+      const messageToStore = {
+        id: tubsMsgId,
+        text: message.text,
+        channel: tubsChannelId,
+      };
+      tub.setData({ platform: '', model: 'message', localId: tubsMsgId }, messageToStore);
+      console.log(JSON.stringify(message, null, 2));
+    });
+  }  
 }

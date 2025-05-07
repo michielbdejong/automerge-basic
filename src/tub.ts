@@ -5,6 +5,17 @@ import { BroadcastChannelNetworkAdapter } from '@automerge/automerge-repo-networ
 // import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket";
 import { NodeFSStorageAdapter } from '@automerge/automerge-repo-storage-nodefs';
 
+export type LocalIdSpec = {
+  platform: string,
+  model: string,
+  localId: string
+};
+
+export function idSpecToStr(from: LocalIdSpec): string {
+  return `${from.platform}:${from.model}:${from.localId}`;
+}
+
+
 export class Tub {
   repo: Repo;
   docHandle: DocHandle<unknown>;
@@ -20,52 +31,72 @@ export class Tub {
     });
     this.name = name;
   }
-  handleChange({ doc }: { doc: DocHandle<unknown> }): void {
+  handleChange(data: { doc: DocHandle<unknown>, patchInfo: { before: object, after: object, source: string } }): void {
     console.log(
       `new doc contents in repo ${this.name} is`,
-      JSON.stringify(doc, null, 2),
+      // JSON.stringify(data.doc, null, 2),
+      data.patchInfo.source,
     );
   }
-  async createDoc(): Promise<string> {
-    this.docHandle = this.repo.create();
-    this.doc = await this.docHandle.doc();
+  async setupDoc(): Promise<string> {
     this.docHandle.on('change', this.handleChange.bind(this));
     console.log(`doc created in repo ${this.name}`, this.docHandle.documentId);
-    return this.docHandle.documentId;
-  }
-  async setDoc(docUrl: string): Promise<void> {
-    console.log(`finding doc in repo ${this.name}`, docUrl);
-    this.docHandle = this.repo.find(docUrl as any);
-    this.doc = await this.docHandle.doc();
-    this.docHandle.on('change', this.handleChange.bind(this));
-    do {
+    while (!this.docHandle.isReady()) {
       console.log(`waiting for doc ${this.name} to be ready`);
       await new Promise((x) => setTimeout(x, 1000));
-    } while (!this.docHandle.isReady());
+    }
+    console.log(`doc ${this.name} is ready`);
+    this.doc = await this.docHandle.doc();
+    console.log(`this.doc created in ${this.name}`, typeof this.doc);
+    return this.docHandle.documentId;
   }
-  async setDictValue(dict: string, key: string, value: any): Promise<void> {
+  async createDoc(): Promise<string> {
+    console.log(`creating doc in repo ${this.name}`);
+    this.docHandle = this.repo.create();
+    return this.setupDoc();
+  }
+  async setDoc(docUrl: string): Promise<string> {
+    console.log(`finding doc in repo ${this.name}`, docUrl);
+    this.docHandle = this.repo.find(docUrl as any);
+    return this.setupDoc();
+  }
+  async setDictValue(dict: string, key: LocalIdSpec, altKey: LocalIdSpec | undefined, value: any): Promise<void> {
     this.docHandle.change((d) => {
       if (typeof d[dict] === 'undefined') {
         d[dict] = {};
       }
       d[dict][key] = value;
+      if (altKey) {
+        d[dict][altKey] = value;
+      }
     });
     this.doc = await this.docHandle.doc();
+    console.log(`this.doc updated in ${this.name}`, typeof this.doc);
     return value;
   }
-  async getDictValue(dict: string, key: string): Promise<any> {
-    if (
-      typeof this.doc[dict] === 'undefined' ||
-      typeof this.doc[dict][key] === 'undefined'
-    ) {
-      return this.setDictValue(dict, key, randomUUID());
+  async ensureCopied(dict: string, existingKey: LocalIdSpec, otherKey?: LocalIdSpec): Promise<any> {
+    if (otherKey && typeof this.doc[dict][idSpecToStr(otherKey)] === 'undefined') {
+      await this.setDictValue(dict, otherKey, undefined, this.doc[dict][idSpecToStr(existingKey)]); 
     }
-    return this.doc[dict][key];
+    return this.doc[dict][idSpecToStr(existingKey)];
   }
-  async getId(localId: string): Promise<string> {
-    return this.getDictValue('index', localId);
+  async getDictValue(dict: string, key: LocalIdSpec, altKey?: LocalIdSpec): Promise<any> {
+    if (typeof this.doc[dict] === 'undefined') {
+      return this.setDictValue(dict, key, altKey, randomUUID());
+    }
+    if (this.doc[dict][idSpecToStr(key)]) {
+      return this.ensureCopied(dict, key, altKey);
+    }
+    if (this.doc[dict][idSpecToStr(altKey)]) {
+      return this.ensureCopied(dict, altKey, key);
+    }
+    return this.setDictValue(dict, key, altKey, randomUUID());
   }
-  async setData(uuid: string, value: unknown): Promise<void> {
-    return this.setDictValue('objects', uuid, value);
+  async getId(localId: LocalIdSpec, altId?: LocalIdSpec): Promise<string> {
+    return this.getDictValue('index', localId, altId);
+  }
+  async setData(uuidSpec: LocalIdSpec, value: unknown): Promise<void> {
+    return this.setDictValue('objects', uuidSpec, undefined, value);
   }
 }
+
