@@ -20,10 +20,11 @@ export class Tub {
     });
     this.name = name;
   }
-  handleChange({ doc }: { doc: DocHandle<unknown> }): void {
+  handleChange(data: { doc: DocHandle<unknown>, patchInfo: { before: object, after: object, source: string } }): void {
     console.log(
       `new doc contents in repo ${this.name} is`,
-      JSON.stringify(doc, null, 2),
+      // JSON.stringify(data.doc, null, 2),
+      data.patchInfo.source,
     );
   }
   async setupDoc(): Promise<string> {
