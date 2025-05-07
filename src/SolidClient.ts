@@ -1,7 +1,7 @@
 import { v7 } from "css-authn";
 import {Fetcher, graph, UpdateManager, AutoInitOptions, IndexedFormula } from "rdflib";
 import ChatsModuleRdfLib, { ChatsModule } from "@solid-data-modules/chats-rdflib";
-import { LocalIdSpec, idSpecToStr, Tub } from "./tub.js";
+import { LocalIdSpec, Tub } from "./tub.js";
 
 export class SolidClient {
   fetch: typeof globalThis.fetch;
@@ -64,7 +64,6 @@ export class SolidClient {
   
   makeChannelId(solidChannelId: string): LocalIdSpec {
     return {
-      platform: 'solid',
       model: 'channel',
       localId: solidChannelId,
     };
@@ -93,11 +92,13 @@ export class SolidClient {
         latestMessages: { uri: string, text: string, date: Date, authorWebId: string }[],
       } = await this.module.readChat(topic);
       const localId = this.makeChannelId(topic);
-      const tubsChannelId = await tub.getId(localId, equivalences[idSpecToStr(localId)]);
+      const tubsChannelId = await tub.getId(localId, equivalences[tub.idSpecToStr(localId)]);
       await Promise.all(latestMessages.map(async (entry) => {
-        const msgId = await tub.getId({ platform: 'solid', model: 'message', localId: entry.uri });
-        const authorId = await tub.getId({ platform: 'solid', model: 'author', localId: entry.authorWebId });
-        tub.setData({ platform: '', model: 'message', localId: msgId }, {
+        console.log('getting Id for message', { model: 'message', localId: entry.uri });
+        const msgId = await tub.getId({ model: 'message', localId: entry.uri });
+        console.log('getting Id for author', { model: 'author', localId: entry.authorWebId });
+        const authorId = await tub.getId({ model: 'author', localId: entry.authorWebId });
+        tub.setData({ model: 'message', localId: msgId }, {
           id: msgId,
           text: entry.text,
           date: entry.date,
