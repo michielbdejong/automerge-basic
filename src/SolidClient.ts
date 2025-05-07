@@ -62,16 +62,13 @@ export class SolidClient {
     return containerUri + dateFolders + "/chat.ttl";
   }
   
-  makeChannelId(solidChannelId: string): string[] {
-    return ['index', 'solid', 'channel', solidChannelId];
-  }
   async listen(tub: Tub, equivalences: { [slack: string]: string[] }): Promise<void> {
     const topic = process.env.CHANNEL_IN_SOLID;
     const todayDoc = this.getTodayDoc(topic);
     const streamingUrl = `https://solidcommunity.net/.notifications/StreamingHTTPChannel2023/${encodeURIComponent(todayDoc)}`;
-    console.log('Fetching Solid streaming URL');
+    // console.log('Fetching Solid streaming URL');
     const res = await this.fetch(streamingUrl);
-    console.log('Setting up stream listener');
+    // console.log('Setting up stream listener');
     const textStream = res.body.pipeThrough(new TextDecoderStream());
     for await (const notificationText of textStream as unknown as {
       [Symbol.asyncIterator](): AsyncIterableIterator<string>;
@@ -88,14 +85,14 @@ export class SolidClient {
         name: string,
         latestMessages: { uri: string, text: string, date: Date, authorWebId: string }[],
       } = await this.module.readChat(topic);
-      const localId = this.makeChannelId(topic);
+      const localId = tub.getIndexKey({ model: 'channel', localId: topic });
       const tubsChannelId = await tub.getId(localId, equivalences[localId.join(':')]);
       await Promise.all(latestMessages.map(async (entry) => {
         const messageKey = tub.getIndexKey({ model: 'message', localId: entry.uri });
-        console.log('getting Id for message', messageKey);
+        // console.log('getting Id for message', messageKey);
         const tubsMsgId = await tub.getId(messageKey);
         const authorKey = tub.getIndexKey({ model: 'author', localId: entry.authorWebId});
-        console.log('getting Id for author', authorKey);
+        // console.log('getting Id for author', authorKey);
         const authorId = await tub.getId(authorKey);
         tub.setData(tub.getObjectKey({ model: 'message', tubsId: tubsMsgId }), {
           id: tubsMsgId,
@@ -106,6 +103,6 @@ export class SolidClient {
         });
       }));
     }
-    console.log('Outside stream listener\'s for-await loop');
+    // console.log('Outside stream listener\'s for-await loop');
   }  
 }

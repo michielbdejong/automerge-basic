@@ -75,6 +75,10 @@ export class Tub {
   }
   
   checkCoverage(): void {
+    if (typeof this.doc['objects'] === 'undefined') {
+      return;
+    }
+    console.log('checking coverage', this.doc);
     try {
       const models = Object.keys(this.doc['objects'])
       models.forEach(model => {
@@ -94,8 +98,9 @@ export class Tub {
       console.error(e);
     }
   }
-  handleChange(data: { doc: DocHandle<unknown>, patchInfo: { before: object, after: object, source: string } }): void {
-    this.checkCoverage();
+  handleChange(): void {
+  // handleChange(data: { doc: DocHandle<unknown>, patchInfo: { before: object, after: object, source: string } }): void {
+      this.checkCoverage();
     // console.log(
     //   `new doc contents in repo ${this.platform} is`,
     //   JSON.stringify(data.doc, null, 2),
