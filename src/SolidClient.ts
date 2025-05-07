@@ -1,7 +1,7 @@
 import { v7 } from "css-authn";
 import {Fetcher, graph, UpdateManager, AutoInitOptions, IndexedFormula } from "rdflib";
 import ChatsModuleRdfLib, { ChatsModule } from "@solid-data-modules/chats-rdflib";
-import { makeLocalId, Tub } from "./tub.js";
+import { LocalIdSpec, idSpecToStr, Tub } from "./tub.js";
 
 export class SolidClient {
   fetch: typeof globalThis.fetch;
@@ -62,10 +62,14 @@ export class SolidClient {
     return containerUri + dateFolders + "/chat.ttl";
   }
   
-  makeChannelId(solidChannelId: string): string {
-    return makeLocalId(['solid', 'channel', solidChannelId]);
+  makeChannelId(solidChannelId: string): LocalIdSpec {
+    return {
+      platform: 'solid',
+      model: 'channel',
+      localId: solidChannelId,
+    };
   }
-  async listen(tub: Tub, equivalences: { [slack: string]: string }): Promise<void> {
+  async listen(tub: Tub, equivalences: { [slack: string]: LocalIdSpec }): Promise<void> {
     const topic = process.env.CHANNEL_IN_SOLID;
     const todayDoc = this.getTodayDoc(topic);
     const streamingUrl = `https://solidcommunity.net/.notifications/StreamingHTTPChannel2023/${encodeURIComponent(todayDoc)}`;
@@ -89,11 +93,11 @@ export class SolidClient {
         latestMessages: { uri: string, text: string, date: Date, authorWebId: string }[],
       } = await this.module.readChat(topic);
       const localId = this.makeChannelId(topic);
-      const tubsChannelId = await tub.getId(localId, equivalences[localId]);
+      const tubsChannelId = await tub.getId(localId, equivalences[idSpecToStr(localId)]);
       await Promise.all(latestMessages.map(async (entry) => {
-        const msgId = await tub.getId(makeLocalId(['solid', 'message', entry.uri]));
-        const authorId = await tub.getId(makeLocalId(['solid', 'author', entry.authorWebId]));
-        tub.setData(msgId, {
+        const msgId = await tub.getId({ platform: 'solid', model: 'message', localId: entry.uri });
+        const authorId = await tub.getId({ platform: 'solid', model: 'author', localId: entry.authorWebId });
+        tub.setData({ platform: '', model: 'message', localId: msgId }, {
           id: msgId,
           text: entry.text,
           date: entry.date,

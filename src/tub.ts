@@ -5,6 +5,17 @@ import { BroadcastChannelNetworkAdapter } from '@automerge/automerge-repo-networ
 // import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket";
 import { NodeFSStorageAdapter } from '@automerge/automerge-repo-storage-nodefs';
 
+export type LocalIdSpec = {
+  platform: string,
+  model: string,
+  localId: string
+};
+
+export function idSpecToStr(from: LocalIdSpec): string {
+  return `${from.platform}:${from.model}:${from.localId}`;
+}
+
+
 export class Tub {
   repo: Repo;
   docHandle: DocHandle<unknown>;
@@ -49,7 +60,7 @@ export class Tub {
     this.docHandle = this.repo.find(docUrl as any);
     return this.setupDoc();
   }
-  async setDictValue(dict: string, key: string, altKey: string | undefined, value: any): Promise<void> {
+  async setDictValue(dict: string, key: LocalIdSpec, altKey: LocalIdSpec | undefined, value: any): Promise<void> {
     this.docHandle.change((d) => {
       if (typeof d[dict] === 'undefined') {
         d[dict] = {};
@@ -63,32 +74,29 @@ export class Tub {
     console.log(`this.doc updated in ${this.name}`, typeof this.doc);
     return value;
   }
-  async ensureCopied(dict: string, existingKey: string, otherKey?: string): Promise<any> {
-    if (otherKey && typeof this.doc[dict][otherKey] === 'undefined') {
-      await this.setDictValue(dict, otherKey, undefined, this.doc[dict][existingKey]); 
+  async ensureCopied(dict: string, existingKey: LocalIdSpec, otherKey?: LocalIdSpec): Promise<any> {
+    if (otherKey && typeof this.doc[dict][idSpecToStr(otherKey)] === 'undefined') {
+      await this.setDictValue(dict, otherKey, undefined, this.doc[dict][idSpecToStr(existingKey)]); 
     }
-    return this.doc[dict][existingKey];
+    return this.doc[dict][idSpecToStr(existingKey)];
   }
-  async getDictValue(dict: string, key: string, altKey?: string): Promise<any> {
+  async getDictValue(dict: string, key: LocalIdSpec, altKey?: LocalIdSpec): Promise<any> {
     if (typeof this.doc[dict] === 'undefined') {
       return this.setDictValue(dict, key, altKey, randomUUID());
     }
-    if (this.doc[dict][key]) {
+    if (this.doc[dict][idSpecToStr(key)]) {
       return this.ensureCopied(dict, key, altKey);
     }
-    if (this.doc[dict][altKey]) {
+    if (this.doc[dict][idSpecToStr(altKey)]) {
       return this.ensureCopied(dict, altKey, key);
     }
     return this.setDictValue(dict, key, altKey, randomUUID());
   }
-  async getId(localId: string, altId?: string): Promise<string> {
+  async getId(localId: LocalIdSpec, altId?: LocalIdSpec): Promise<string> {
     return this.getDictValue('index', localId, altId);
   }
-  async setData(uuid: string, value: unknown): Promise<void> {
-    return this.setDictValue('objects', uuid, undefined, value);
+  async setData(uuidSpec: LocalIdSpec, value: unknown): Promise<void> {
+    return this.setDictValue('objects', uuidSpec, undefined, value);
   }
 }
 
-export function makeLocalId(parts: string[]): string {
-  return parts.join(':');
-}

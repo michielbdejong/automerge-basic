@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { createServer, IncomingMessage, ServerResponse } from 'http';
-import { Tub } from './tub.js';
+import { Tub, idSpecToStr } from './tub.js';
 import { SlackClient } from './SlackClient.js';
 import { SolidClient } from './SolidClient.js';
 
@@ -25,12 +25,12 @@ async function run(): Promise<void> {
   const solidChannelId = solid.makeChannelId(process.env.CHANNEL_IN_SOLID);
   
   await slack.listen(tub1, 8080, {
-    [slackChannelId]: solidChannelId
+    [idSpecToStr(slackChannelId)]: solidChannelId
   });
 
   await solid.connect();
   await solid.listen(tub2, {
-    [solidChannelId]: slackChannelId
+    [idSpecToStr(solidChannelId)]: slackChannelId
   });
   // await solid.createChat('https://michielbdejong.solidcommunity.net/IndividualChats/bla', 'Bla Chat');
   // const read = await solid.readChat('https://michielbdejong.solidcommunity.net/IndividualChats/blactbd1Z/index.ttl#this');
