@@ -26,25 +26,27 @@ export class Tub {
       JSON.stringify(doc, null, 2),
     );
   }
-  async createDoc(): Promise<string> {
-    this.docHandle = this.repo.create();
-    this.doc = await this.docHandle.doc();
-    console.log(`this.doc created in ${this.name}`, typeof this.doc);
+  async setupDoc(): Promise<string> {
     this.docHandle.on('change', this.handleChange.bind(this));
     console.log(`doc created in repo ${this.name}`, this.docHandle.documentId);
-    return this.docHandle.documentId;
-  }
-  async setDoc(docUrl: string): Promise<void> {
-    console.log(`finding doc in repo ${this.name}`, docUrl);
-    this.docHandle = this.repo.find(docUrl as any);
-    this.doc = await this.docHandle.doc();
-    console.log(`this.doc created in ${this.name}`, typeof this.doc);
-    this.docHandle.on('change', this.handleChange.bind(this));
-    do {
+    while (!this.docHandle.isReady()) {
       console.log(`waiting for doc ${this.name} to be ready`);
       await new Promise((x) => setTimeout(x, 1000));
-    } while (!this.docHandle.isReady());
+    }
     console.log(`doc ${this.name} is ready`);
+    this.doc = await this.docHandle.doc();
+    console.log(`this.doc created in ${this.name}`, typeof this.doc);
+    return this.docHandle.documentId;
+  }
+  async createDoc(): Promise<string> {
+    console.log(`creating doc in repo ${this.name}`);
+    this.docHandle = this.repo.create();
+    return this.setupDoc();
+  }
+  async setDoc(docUrl: string): Promise<string> {
+    console.log(`finding doc in repo ${this.name}`, docUrl);
+    this.docHandle = this.repo.find(docUrl as any);
+    return this.setupDoc();
   }
   async setDictValue(dict: string, key: string, value: any): Promise<void> {
     this.docHandle.change((d) => {

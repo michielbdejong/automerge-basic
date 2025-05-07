@@ -47,13 +47,25 @@ export class SolidClient {
     console.log(`Created Solid chat ${uri}`);
     return uri;
   }
-  async readChat(chatUri: string): Promise<object> {
-    return this.module.readChat(chatUri);
+  // async readChat(chatUri: string): Promise<object> {
+  //   return this.module.readChat(chatUri);
+  // }
+  getTodayDoc(chatUri: string): string {
+    // FIXME: expose this code from https://github.com/solid-contrib/data-modules/blob/main/chats/rdflib/src/module/uris/mintMessageUri.ts
+    if (!chatUri.endsWith('index.ttl#this')) {
+      throw new Error(`Chat URI ${chatUri} does not end with the expected index.ttl#this, is it really the URI of a LongChat?`);
+    }
+    // note that this relies on server clocks being in sync
+    const date = new Date();
+    const dateFolders = date.toISOString().split("T")[0].replace(/-/g, "/");
+    const containerUri = chatUri.substring(0, chatUri.length - `index.ttl#this`.length);
+    return containerUri + dateFolders + "/chat.ttl";
   }
   
   async listen(tub: Tub): Promise<void> {
     const topic = process.env.SOLID_TOPIC;
-    const streamingUrl = `https://solidcommunity.net/.notifications/StreamingHTTPChannel2023/${encodeURIComponent(topic)}`;
+    const todayDoc = this.getTodayDoc(topic);
+    const streamingUrl = `https://solidcommunity.net/.notifications/StreamingHTTPChannel2023/${encodeURIComponent(todayDoc)}`;
     console.log('Fetching Solid streaming URL');
     const res = await this.fetch(streamingUrl);
     console.log('Setting up stream listener');
@@ -62,24 +74,29 @@ export class SolidClient {
       [Symbol.asyncIterator](): AsyncIterableIterator<string>;
     }) {
       console.log(notificationText);
-      const docRes = await this.fetch(topic, {
-        headers: {
-          Accept: 'application/ld+json',
-        },
-      });
-      const chatChannel = await docRes.json();
+      // const docRes = await this.fetch(todayDoc, {
+      //   headers: {
+      //     Accept: 'application/ld+json',
+      //   },
+      // });
+      // const chatChannel = await docRes.json();
+      const { latestMessages }: {
+        uri: string,
+        name: string,
+        latestMessages: { uri: string, text: string, date: Date, authorWebId: string }[],
+      } = await this.module.readChat(topic);
       const tubsChannelId = await tub.getId(makeLocalId(['solid', 'channel', topic]));
-      await Promise.all(chatChannel.map(async (entry) => {
+      await Promise.all(latestMessages.map(async (entry) => {
         if (entry['@id'].startsWith(topic)) {
-          if (Array.isArray(entry['http://rdfs.org/sioc/ns#content']) && entry['http://rdfs.org/sioc/ns#content'].length === 1) {
-            console.log(entry['@id'], entry['http://rdfs.org/sioc/ns#content'][0]['@value']);
-            const msgId = await tub.getId(makeLocalId(['solid', 'message', entry['@id']]));
-            tub.setData(msgId, {
-              id: msgId,
-              text: entry['http://rdfs.org/sioc/ns#content'][0]['@value'],
-              channel: tubsChannelId,
-            });
-          }
+          const msgId = await tub.getId(makeLocalId(['solid', 'message', entry.uri]));
+          const authorId = await tub.getId(makeLocalId(['solid', 'author', entry.authorWebId]));
+          tub.setData(msgId, {
+            id: msgId,
+            text: entry.text,
+            date: entry.date,
+            authorId: authorId,
+            channel: tubsChannelId,
+          });
         }
       }));
     }
