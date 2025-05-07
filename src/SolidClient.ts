@@ -91,10 +91,12 @@ export class SolidClient {
       const localId = this.makeChannelId(topic);
       const tubsChannelId = await tub.getId(localId, equivalences[localId.join(':')]);
       await Promise.all(latestMessages.map(async (entry) => {
-        console.log('getting Id for message', [ 'index', 'message', entry.uri ]);
-        const tubsMsgId = await tub.getId(['index', 'message', entry.uri ]);
-        console.log('getting Id for author', [ 'index', 'author', entry.authorWebId ]);
-        const authorId = await tub.getId([ 'index', 'author', entry.authorWebId ]);
+        const messageKey = [ 'index', 'solid', 'message', entry.uri ];
+        console.log('getting Id for message', messageKey);
+        const tubsMsgId = await tub.getId(messageKey);
+        const authorKey = [ 'index', 'solid', 'author', entry.authorWebId ];
+        console.log('getting Id for author', authorKey);
+        const authorId = await tub.getId(authorKey);
         tub.setData([ 'objects', 'message', tubsMsgId ], {
           id: tubsMsgId,
           text: entry.text,
