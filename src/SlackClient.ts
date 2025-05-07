@@ -89,29 +89,25 @@ export class SlackClient extends EventEmitter {
       this.emit('message', message);
     });
   }
-  async start(port: number): Promise<void> {
-    await this.app.start(port);
-  }
-}
 
-export async function startSlackClient(tub: Tub): Promise<void> {
-  const slackClient = new SlackClient();
-  await slackClient.create('');
-  await slackClient.start(8080);
-  slackClient.on('message', async (message: IMessage) => {
-    console.info('----------onMessage-----------');
-    const tubsChannelId = await tub.getId(
-      makeLocalId(['slack', 'channel', message.channel]),
-    );
-    const tubsMsgId = await tub.getId(
-      makeLocalId(['slack', 'message', message.client_msg_id]),
-    );
-    const messageToStore = {
-      id: tubsMsgId,
-      text: message.text,
-      channel: tubsChannelId,
-    };
-    tub.setData(tubsMsgId, messageToStore);
-    console.log(JSON.stringify(message, null, 2));
-  });
+  async listen(tub: Tub, port: number): Promise<void> {
+    await this.create('');
+    await this.app.start(port);
+    this.on('message', async (message: IMessage) => {
+      console.info('----------onMessage-----------');
+      const tubsChannelId = await tub.getId(
+        makeLocalId(['slack', 'channel', message.channel]),
+      );
+      const tubsMsgId = await tub.getId(
+        makeLocalId(['slack', 'message', message.client_msg_id]),
+      );
+      const messageToStore = {
+        id: tubsMsgId,
+        text: message.text,
+        channel: tubsChannelId,
+      };
+      tub.setData(tubsMsgId, messageToStore);
+      console.log(JSON.stringify(message, null, 2));
+    });
+  }  
 }
