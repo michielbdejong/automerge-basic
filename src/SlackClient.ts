@@ -1,6 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 const bolt = await import('@slack/bolt');
+import { makeLocalId, Tub } from './tub.js';
+
 const App = bolt.default.App;
 
 const BOLT_PORT = 7000;
@@ -90,4 +92,26 @@ export class SlackClient extends EventEmitter {
   async start(port: number): Promise<void> {
     await this.app.start(port);
   }
+}
+
+export async function startSlackClient(tub: Tub): Promise<void> {
+  const slackClient = new SlackClient();
+  await slackClient.create('');
+  await slackClient.start(8080);
+  slackClient.on('message', async (message: IMessage) => {
+    console.info('----------onMessage-----------');
+    const tubsChannelId = await tub.getId(
+      makeLocalId(['slack', 'channel', message.channel]),
+    );
+    const tubsMsgId = await tub.getId(
+      makeLocalId(['slack', 'message', message.client_msg_id]),
+    );
+    const messageToStore = {
+      id: tubsMsgId,
+      text: message.text,
+      channel: tubsChannelId,
+    };
+    tub.setData(tubsMsgId, messageToStore);
+    console.log(JSON.stringify(message, null, 2));
+  });
 }

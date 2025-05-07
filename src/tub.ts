@@ -29,6 +29,7 @@ export class Tub {
   async createDoc(): Promise<string> {
     this.docHandle = this.repo.create();
     this.doc = await this.docHandle.doc();
+    console.log(`this.doc created in ${this.name}`, typeof this.doc);
     this.docHandle.on('change', this.handleChange.bind(this));
     console.log(`doc created in repo ${this.name}`, this.docHandle.documentId);
     return this.docHandle.documentId;
@@ -37,11 +38,13 @@ export class Tub {
     console.log(`finding doc in repo ${this.name}`, docUrl);
     this.docHandle = this.repo.find(docUrl as any);
     this.doc = await this.docHandle.doc();
+    console.log(`this.doc created in ${this.name}`, typeof this.doc);
     this.docHandle.on('change', this.handleChange.bind(this));
     do {
       console.log(`waiting for doc ${this.name} to be ready`);
       await new Promise((x) => setTimeout(x, 1000));
     } while (!this.docHandle.isReady());
+    console.log(`doc ${this.name} is ready`);
   }
   async setDictValue(dict: string, key: string, value: any): Promise<void> {
     this.docHandle.change((d) => {
@@ -51,6 +54,7 @@ export class Tub {
       d[dict][key] = value;
     });
     this.doc = await this.docHandle.doc();
+    console.log(`this.doc updated in ${this.name}`, typeof this.doc);
     return value;
   }
   async getDictValue(dict: string, key: string): Promise<any> {
@@ -68,4 +72,8 @@ export class Tub {
   async setData(uuid: string, value: unknown): Promise<void> {
     return this.setDictValue('objects', uuid, value);
   }
+}
+
+export function makeLocalId(parts: string[]): string {
+  return parts.join(':');
 }
