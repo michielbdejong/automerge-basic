@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { Tub } from './tub.js';
-// import { SlackClient } from './SlackClient.js';
+import { SlackClient } from './SlackClient.js';
 import { SolidClient } from './SolidClient.js';
 
 
@@ -18,12 +18,20 @@ async function run(): Promise<void> {
   const docUrl = await tub1.createDoc();
   await tub2.setDoc(docUrl);
 
-  // const slack = new SlackClient();
-  // await slack.listen(tub1, 8080);
+  const slack = new SlackClient();
+  const slackChannelId = slack.makeChannelId(process.env.CHANNEL_IN_SLACK);
 
   const solid = new SolidClient();
+  const solidChannelId = solid.makeChannelId(process.env.CHANNEL_IN_SLACK);
+  
+  await slack.listen(tub1, 8080, {
+    [slackChannelId]: solidChannelId
+  });
+
   await solid.connect();
-  await solid.listen(tub2);
+  await solid.listen(tub2, {
+    [solidChannelId]: slackChannelId
+  });
   // await solid.createChat('https://michielbdejong.solidcommunity.net/IndividualChats/bla', 'Bla Chat');
   // const read = await solid.readChat('https://michielbdejong.solidcommunity.net/IndividualChats/blactbd1Z/index.ttl#this');
   // console.log(read);

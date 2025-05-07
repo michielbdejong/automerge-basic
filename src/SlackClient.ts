@@ -89,15 +89,17 @@ export class SlackClient extends EventEmitter {
       this.emit('message', message);
     });
   }
+  makeChannelId(slackChannelId: string): string {
+    return makeLocalId(['slack', 'channel', slackChannelId]);
+  }
 
-  async listen(tub: Tub, port: number): Promise<void> {
+  async listen(tub: Tub, port: number, equivalences: { [slack: string]: string }): Promise<void> {
     await this.create('');
     await this.app.start(port);
     this.on('message', async (message: IMessage) => {
       console.info('----------onMessage-----------');
-      const tubsChannelId = await tub.getId(
-        makeLocalId(['slack', 'channel', message.channel]),
-      );
+      const localId = this.makeChannelId(message.channel);
+      const tubsChannelId = await tub.getId(localId, equivalences[localId]);
       const tubsMsgId = await tub.getId(
         makeLocalId(['slack', 'message', message.client_msg_id]),
       );

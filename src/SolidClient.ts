@@ -62,8 +62,11 @@ export class SolidClient {
     return containerUri + dateFolders + "/chat.ttl";
   }
   
-  async listen(tub: Tub): Promise<void> {
-    const topic = process.env.SOLID_TOPIC;
+  makeChannelId(solidChannelId: string): string {
+    return makeLocalId(['solid', 'channel', solidChannelId]);
+  }
+  async listen(tub: Tub, equivalences: { [slack: string]: string }): Promise<void> {
+    const topic = process.env.CHANNEL_IN_SOLID;
     const todayDoc = this.getTodayDoc(topic);
     const streamingUrl = `https://solidcommunity.net/.notifications/StreamingHTTPChannel2023/${encodeURIComponent(todayDoc)}`;
     console.log('Fetching Solid streaming URL');
@@ -85,19 +88,18 @@ export class SolidClient {
         name: string,
         latestMessages: { uri: string, text: string, date: Date, authorWebId: string }[],
       } = await this.module.readChat(topic);
-      const tubsChannelId = await tub.getId(makeLocalId(['solid', 'channel', topic]));
+      const localId = this.makeChannelId(topic);
+      const tubsChannelId = await tub.getId(localId, equivalences[localId]);
       await Promise.all(latestMessages.map(async (entry) => {
-        if (entry['@id'].startsWith(topic)) {
-          const msgId = await tub.getId(makeLocalId(['solid', 'message', entry.uri]));
-          const authorId = await tub.getId(makeLocalId(['solid', 'author', entry.authorWebId]));
-          tub.setData(msgId, {
-            id: msgId,
-            text: entry.text,
-            date: entry.date,
-            authorId: authorId,
-            channel: tubsChannelId,
-          });
-        }
+        const msgId = await tub.getId(makeLocalId(['solid', 'message', entry.uri]));
+        const authorId = await tub.getId(makeLocalId(['solid', 'author', entry.authorWebId]));
+        tub.setData(msgId, {
+          id: msgId,
+          text: entry.text,
+          date: entry.date,
+          authorId: authorId,
+          channel: tubsChannelId,
+        });
       }));
     }
     console.log('Outside stream listener\'s for-await loop');

@@ -48,31 +48,43 @@ export class Tub {
     this.docHandle = this.repo.find(docUrl as any);
     return this.setupDoc();
   }
-  async setDictValue(dict: string, key: string, value: any): Promise<void> {
+  async setDictValue(dict: string, key: string, altKey: string | undefined, value: any): Promise<void> {
     this.docHandle.change((d) => {
       if (typeof d[dict] === 'undefined') {
         d[dict] = {};
       }
       d[dict][key] = value;
+      if (altKey) {
+        d[dict][altKey] = value;
+      }
     });
     this.doc = await this.docHandle.doc();
     console.log(`this.doc updated in ${this.name}`, typeof this.doc);
     return value;
   }
-  async getDictValue(dict: string, key: string): Promise<any> {
-    if (
-      typeof this.doc[dict] === 'undefined' ||
-      typeof this.doc[dict][key] === 'undefined'
-    ) {
-      return this.setDictValue(dict, key, randomUUID());
+  async ensureCopied(dict: string, existingKey: string, otherKey?: string): Promise<any> {
+    if (otherKey && typeof this.doc[dict][otherKey] === 'undefined') {
+      await this.setDictValue(dict, otherKey, undefined, this.doc[dict][existingKey]); 
     }
-    return this.doc[dict][key];
+    return this.doc[dict][existingKey];
   }
-  async getId(localId: string): Promise<string> {
-    return this.getDictValue('index', localId);
+  async getDictValue(dict: string, key: string, altKey?: string): Promise<any> {
+    if (typeof this.doc[dict] === 'undefined') {
+      return this.setDictValue(dict, key, altKey, randomUUID());
+    }
+    if (this.doc[dict][key]) {
+      return this.ensureCopied(dict, key, altKey);
+    }
+    if (this.doc[dict][altKey]) {
+      return this.ensureCopied(dict, altKey, key);
+    }
+    return this.setDictValue(dict, key, altKey, randomUUID());
+  }
+  async getId(localId: string, altId?: string): Promise<string> {
+    return this.getDictValue('index', localId, altId);
   }
   async setData(uuid: string, value: unknown): Promise<void> {
-    return this.setDictValue('objects', uuid, value);
+    return this.setDictValue('objects', uuid, undefined, value);
   }
 }
 
