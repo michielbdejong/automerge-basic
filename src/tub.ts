@@ -6,7 +6,8 @@ import { BroadcastChannelNetworkAdapter } from '@automerge/automerge-repo-networ
 import { NodeFSStorageAdapter } from '@automerge/automerge-repo-storage-nodefs';
 
 export function setDocEntry(doc:{ [index: string]: any }, nesting: string[], value: any): void {
-  return _setDocEntry(doc, JSON.parse(JSON.stringify(nesting)), value);
+    console.log('setDocEntry', nesting, value);
+    return _setDocEntry(doc, JSON.parse(JSON.stringify(nesting)), value);
 }
 function _setDocEntry(doc:{ [index: string]: any }, nesting: string[], value: any): void {
     // console.log('setDocEntry 1', doc, nesting, value);
@@ -76,6 +77,7 @@ export class Tub {
   
   checkCoverage(): void {
     if (typeof this.doc['objects'] === 'undefined') {
+      console.log('attempt to check coverage on doc without objects', this.doc);
       return;
     }
     console.log('checking coverage', this.doc);

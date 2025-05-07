@@ -94,13 +94,15 @@ export class SolidClient {
         const authorKey = tub.getIndexKey({ model: 'author', localId: entry.authorWebId});
         // console.log('getting Id for author', authorKey);
         const authorId = await tub.getId(authorKey);
-        tub.setData(tub.getObjectKey({ model: 'message', tubsId: tubsMsgId }), {
+        const obj = {
           id: tubsMsgId,
           text: entry.text,
           date: entry.date,
           authorId: authorId,
           channel: tubsChannelId,
-        });
+        };
+        console.log('setting message object', tubsMsgId, obj);
+        tub.setData(tub.getObjectKey({ model: 'message', tubsId: tubsMsgId }), obj);
       }));
     }
     // console.log('Outside stream listener\'s for-await loop');
