@@ -67,6 +67,13 @@ export class Tub {
     });
     this.platform = platform;
   }
+  getIndexKey({ model, localId }: { model: string, localId: string}): string[] {
+    return [ 'index', this.platform, model, localId ];
+  }
+  getObjectKey({ model, tubsId }: { model: string, tubsId: string}): string[] {
+    return [ 'objects', model, tubsId ];
+  }
+  
   handleChange(data: { doc: DocHandle<unknown>, patchInfo: { before: object, after: object, source: string } }): void {
     console.log(
       `new doc contents in repo ${this.platform} is`,

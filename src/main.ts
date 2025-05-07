@@ -19,7 +19,7 @@ async function run(): Promise<void> {
   await solidTub.setDoc(docUrl);
 
   const slack = new SlackClient();
-  const slackChannelId = slack.makeChannelId(process.env.CHANNEL_IN_SLACK);
+  const slackChannelId = slackTub.getIndexKey({ model: 'channel', localId: process.env.CHANNEL_IN_SLACK });
 
   const solid = new SolidClient();
   const solidChannelId = solid.makeChannelId(process.env.CHANNEL_IN_SOLID);
