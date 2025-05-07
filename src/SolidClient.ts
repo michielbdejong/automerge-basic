@@ -1,10 +1,18 @@
 import { v7 } from "css-authn";
-import {Fetcher, graph, UpdateManager} from "rdflib";
+import {Fetcher, graph, UpdateManager, AutoInitOptions, IndexedFormula } from "rdflib";
 import ChatsModuleRdfLib, { ChatsModule } from "@solid-data-modules/chats-rdflib";
 import { makeLocalId, Tub } from "./tub.js";
 
 export class SolidClient {
   fetch: typeof globalThis.fetch;
+  store: IndexedFormula;
+  fetcher: Fetcher;
+  updater: UpdateManager;
+  module: ChatsModule;
+  constructor() {
+    this.store = graph();
+    this.updater = new UpdateManager(this.store);
+  }
   async connect(): Promise<void> {
     console.log(`Connnecting to Solid...`);
     this.fetch = await v7.getAuthenticatedFetch({
@@ -12,29 +20,35 @@ export class SolidClient {
       password: process.env.SOLID_PASSWORD,
       provider: process.env.SOLID_SERVER,
     });
-    console.log(`Connnected to Solid ${process.env.SOLID_SERVER}`);
-  }
-  async createChat(containerUri: string, name: string): Promise<string> {
-    console.log(`Creating Solid chat ${name} in ${containerUri}`);
     // 1️⃣ create rdflib store, fetcher and updater as usual
-    const store = graph();
-    const fetcher = new Fetcher(
-            store,
-            this.fetch as unknown,
+    this.fetcher = new Fetcher(
+      this.store,
+      { fetch: this.fetch } as AutoInitOptions,
     );
-    const updater = new UpdateManager(store);
 
     // 2️⃣ create the chats module
-    const module: ChatsModule = new ChatsModuleRdfLib({store, fetcher, updater});
+    this.module = new ChatsModuleRdfLib({
+      store: this.store,
+      fetcher: this.fetcher,
+      updater: this.updater,
+    });
+    console.log(`Connnected to Solid ${process.env.SOLID_SERVER}`);
+  }
+
+  async createChat(containerUri: string, name: string): Promise<string> {
+    console.log(`Creating Solid chat ${name} in ${containerUri}`);
 
     console.log(`Calling Solid chat data module`);
     // 3️⃣ use the module to interact with chats
-    const uri = await module.createChat({
+    const uri = await this.module.createChat({
       containerUri,
       name,
     });
     console.log(`Created Solid chat ${uri}`);
     return uri;
+  }
+  async readChat(chatUri: string): Promise<object> {
+    return this.module.readChat(chatUri);
   }
   
   async listen(tub: Tub): Promise<void> {
