@@ -157,7 +157,7 @@ export class Tub extends EventEmitter {
     return value;
   }
   async ensureCopied(existingKey: string[], otherKey?: string[]): Promise<any> {
-    // console.log('ensureCopied', existingKey, otherKey);
+    console.log('ensureCopied', existingKey, otherKey);
     const entry = getDocEntry(this.doc, existingKey);
     if (otherKey && typeof getDocEntry(this.doc, otherKey) === 'undefined') {
       await this.setDictValue(otherKey, undefined, entry); 
@@ -165,7 +165,7 @@ export class Tub extends EventEmitter {
     return entry;
   }
   async getDictValue(key: string[], altKey?: string[], mintIfMissing?: boolean): Promise<any> {
-    // console.log('getDictValue', key, altKey);
+    console.log('getDictValue', key, altKey, mintIfMissing);
  
     if (getDocEntry(this.doc, key)) {
       return this.ensureCopied(key, altKey);
@@ -186,7 +186,8 @@ export class Tub extends EventEmitter {
   }
   async getLocalizedObject({ model, tubsId }: { model: string, tubsId: string }): Promise<any> {
     const key = this.getObjectKey({ model, tubsId });
-    const obj = this.getDictValue(key);
+    const obj = await this.getDictValue(key);
+    console.log('getLocalizedObject; starting from:', model, tubsId, key, obj);
     // for instance if this is a chat message from Solid, it will look like this:
     // {
     //   id: tubsMsgId,
@@ -196,13 +197,17 @@ export class Tub extends EventEmitter {
     //   channelId: tubsChannelId,
     // }
     Object.keys(obj).forEach(key => {
+      console.log('considering key', key, obj[key]);
       if (key === 'id') {
         obj[key] = this.getLocalizedId({ model, tubsId: obj[key] });
+        console.log('updated', key, obj[key]);
       } else if (key.endsWith('Id')) {
         const relatedModel = key.substring(0, key.length - `Id`.length); 
         obj[key] = this.getLocalizedId({ model: relatedModel, tubsId: obj[key] });
+        console.log('updated', key, obj[key]);
       }
     });
+    console.log('returning obj', obj);
     return obj;
   }
   async setData(uuidSpec: string[], value: unknown): Promise<void> {
