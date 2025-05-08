@@ -64,9 +64,6 @@ function _getDocEntry(doc:{ [index: string]: any }, nesting: string[]): any {
 export class Tub extends EventEmitter {
   repo: Repo;
   docHandle: DocHandle<unknown>;
-  doc: {
-    [dict: string]: { [key: string]: string };
-  };
   platform: string;
   constructor(platform: string) {
     super();
@@ -129,8 +126,8 @@ export class Tub extends EventEmitter {
       await new Promise((x) => setTimeout(x, 1000));
     }
     // console.log(`doc ${this.platform} is ready`);
-    this.doc = await this.docHandle.doc();
-    // console.log(`this.doc created in ${this.platform}`, typeof this.doc);
+    await this.docHandle.whenReady();
+    // console.log(`this.docHandle.docSync() created in ${this.platform}`, typeof this.docHandle.docSync());
     return this.docHandle.documentId;
   }
   async createDoc(): Promise<string> {
@@ -152,14 +149,13 @@ export class Tub extends EventEmitter {
       }
       console.log('doc changed inside callback!', d);
     });
-    this.doc = await this.docHandle.doc();
-    console.log(`this.doc updated in ${this.platform}`, this.doc);
+    console.log(`this.docHandle.docSync() updated in ${this.platform}`, this.docHandle.docSync());
     return value;
   }
   async ensureCopied(existingKey: string[], otherKey?: string[]): Promise<any> {
     console.log('ensureCopied', existingKey, otherKey);
-    const entry = getDocEntry(this.doc, existingKey);
-    if (otherKey && typeof getDocEntry(this.doc, otherKey) === 'undefined') {
+    const entry = getDocEntry(this.docHandle.docSync(), existingKey);
+    if (otherKey && typeof getDocEntry(this.docHandle.docSync(), otherKey) === 'undefined') {
       await this.setDictValue(otherKey, undefined, entry); 
     }
     return entry;
@@ -167,10 +163,10 @@ export class Tub extends EventEmitter {
   async getDictValue(key: string[], altKey?: string[], mintIfMissing?: boolean): Promise<any> {
     console.log('getDictValue', key, altKey, mintIfMissing);
  
-    if (getDocEntry(this.doc, key)) {
+    if (getDocEntry(this.docHandle.docSync(), key)) {
       return this.ensureCopied(key, altKey);
     }
-    if (altKey && getDocEntry(this.doc, altKey)) {
+    if (altKey && getDocEntry(this.docHandle.docSync(), altKey)) {
       return this.ensureCopied(altKey, key);
     }
     if (mintIfMissing) {
@@ -182,7 +178,7 @@ export class Tub extends EventEmitter {
     return this.getDictValue(localId, altId, mintIfMissing);
   }
   getLocalizedId({ model, tubsId }: { model: string, tubsId: string }): string {
-    return ['tbd', this.platform, model, tubsId].join('?');
+    return ['tbd', model, tubsId, 'in', this.platform].join('?');
   }
   async getLocalizedObject({ model, tubsId }: { model: string, tubsId: string }): Promise<any> {
     const key = this.getObjectKey({ model, tubsId });
