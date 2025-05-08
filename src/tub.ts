@@ -1,7 +1,7 @@
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
-import { Repo, DocHandle, DocHandleChangePayload } from '@automerge/automerge-repo';
+import { Repo, DocHandle } from '@automerge/automerge-repo';
 import { BroadcastChannelNetworkAdapter } from '@automerge/automerge-repo-network-broadcastchannel';
 // import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket";
 import { NodeFSStorageAdapter } from '@automerge/automerge-repo-storage-nodefs';
@@ -60,18 +60,19 @@ function _getDocEntry(doc:{ [index: string]: any }, nesting: string[]): any {
   }
 }
 
+function createRepo(): Repo {
+  return new Repo({
+    // network: [new BrowserWebSocketClientAdapter('wss://sync.automerge.org')],
+    network: [new BroadcastChannelNetworkAdapter()],
+    storage: new NodeFSStorageAdapter('./data'),
+  });
+}
 
 export class Tub extends EventEmitter {
-  repo: Repo;
   docHandle: DocHandle<unknown>;
   platform: string;
   constructor(platform: string) {
     super();
-    this.repo = new Repo({
-      // network: [new BrowserWebSocketClientAdapter('wss://sync.automerge.org')],
-      network: [new BroadcastChannelNetworkAdapter()],
-      storage: new NodeFSStorageAdapter('./data'),
-    });
     this.platform = platform;
   }
   getIndexKey({ model, localId }: { model: string, localId: string}): string[] {
@@ -81,37 +82,28 @@ export class Tub extends EventEmitter {
     return [ 'objects', model, tubsId ];
   }
   
-  checkCoverage(doc: { [index: string]: any }): void {
-    if (typeof doc['objects'] === 'undefined') {
-      console.log('attempt to check coverage on doc without objects', doc);
+  checkCoverage(): void {
+    if (typeof this.docHandle.docSync()['objects'] === 'undefined') {
+      console.log('attempt to check coverage on doc without objects', this.docHandle.docSync());
       return;
     }
-    console.log('checking coverage', doc);
+    console.log('checking coverage', this.docHandle.docSync());
     try {
-      const models = Object.keys(doc['objects'])
+      const models = Object.keys(this.docHandle.docSync()['objects'])
       models.forEach(model => {
-        const uuids = Object.keys(doc['objects'][model]);
-        uuids.forEach(uuid => {
-          // console.log(`Looking for ${model} keys in ${this.platform}`, typeof doc['index'][this.platform][model]);
-          let found = false;
-          if (typeof doc['index'][this.platform][model] === 'object') {
-            const localIds = Object.keys(doc['index'][this.platform][model]);
-            for (let i = 0; i < localIds.length && !found; i++) {
-              if (doc['index'][this.platform][model][i] === uuid) {
-                found = true;
-              }
-            }
-          }
-          console.log(`${model} ${uuid} ${(found ? 'found' : 'NOT FOUND')} in ${this.platform}`);
-          this.emit('create', model, uuid);
+        const uuids = Object.keys(this.docHandle.docSync()['objects'][model]);
+        uuids.forEach(tubsId => {
+          const localizedId = this.getLocalId({ model, tubsId });
+          console.log(`${model} ${tubsId} ${(localizedId === 'undefined' ? 'found' : 'NOT FOUND')} in ${this.platform}`);
+          this.emit('create', model, tubsId);
         });
       });
     } catch (e) {
       console.error(e);
     }
   }
-  handleChange(data: DocHandleChangePayload<unknown>): void {
-    this.checkCoverage(data.doc);
+  handleChange(): void {
+    this.checkCoverage();
     // console.log(
     //   `new doc contents in repo ${this.platform} is`,
     //   JSON.stringify(data.doc, null, 2),
@@ -132,12 +124,12 @@ export class Tub extends EventEmitter {
   }
   async createDoc(): Promise<string> {
     // console.log(`creating doc in repo ${this.platform}`);
-    this.docHandle = this.repo.create();
+    this.docHandle = createRepo().create();
     return this.setupDoc();
   }
   async setDoc(docUrl: string): Promise<string> {
     // console.log(`finding doc in repo ${this.platform}`, docUrl);
-    this.docHandle = this.repo.find(docUrl as any);
+    this.docHandle = createRepo().find(docUrl as any);
     return this.setupDoc();
   }
   async setDictValue(key: string[], altKey: string[] | undefined, value: any): Promise<void> {
@@ -177,8 +169,17 @@ export class Tub extends EventEmitter {
   async getId(localId: string[], altId?: string[], mintIfMissing?: boolean): Promise<string> {
     return this.getDictValue(localId, altId, mintIfMissing);
   }
-  getLocalizedId({ model, tubsId }: { model: string, tubsId: string }): string {
-    return ['tbd', model, tubsId, 'in', this.platform].join('?');
+  getLocalId({ model, tubsId }: { model: string, tubsId: string }): string | undefined {
+    if (typeof this.docHandle.docSync()['index'][this.platform][model] === 'object') {
+      const localIds = Object.keys(this.docHandle.docSync()['index'][this.platform][model]);
+      for (let i = 0; i < localIds.length; i++) {
+        const localId = localIds[i];
+        if (this.docHandle.docSync()['index'][this.platform][model][localId] === tubsId) {
+          return localId;
+        }
+      }
+    }
+    return undefined;
   }
   async getLocalizedObject({ model, tubsId }: { model: string, tubsId: string }): Promise<any> {
     const key = this.getObjectKey({ model, tubsId });
@@ -195,11 +196,11 @@ export class Tub extends EventEmitter {
     Object.keys(obj).forEach(key => {
       console.log('considering key', key, obj[key]);
       if (key === 'id') {
-        obj[key] = this.getLocalizedId({ model, tubsId: obj[key] });
+        obj[key] = this.getLocalId({ model, tubsId: obj[key] });
         console.log('updated', key, obj[key]);
       } else if (key.endsWith('Id')) {
         const relatedModel = key.substring(0, key.length - `Id`.length); 
-        obj[key] = this.getLocalizedId({ model: relatedModel, tubsId: obj[key] });
+        obj[key] = this.getLocalId({ model: relatedModel, tubsId: obj[key] });
         console.log('updated', key, obj[key]);
       }
     });

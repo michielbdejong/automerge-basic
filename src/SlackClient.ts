@@ -74,6 +74,12 @@ export class SlackClient extends EventEmitter {
   async createOnPlatform(model: string, tubsId: string): Promise<void> {
     const localizedObject = await this.tub.getLocalizedObject({ model, tubsId });
     console.log('creating on Slack:', model, tubsId, localizedObject);
+    // https://docs.slack.dev/reference/methods/chat.postMessage
+    const created = await this.app.client.chat.postMessage({
+      channel: localizedObject.channelId,
+      text: localizedObject.text,
+    });
+    console.log(created);
   }
   async listen(port: number, equivalences: Equivalences): Promise<void> {
     this.tub.on('create', this.createOnPlatform.bind(this));

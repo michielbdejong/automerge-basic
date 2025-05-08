@@ -99,7 +99,7 @@ export class SolidClient {
           text: entry.text,
           date: entry.date,
           authorId: tubsAuthorId,
-          channel: tubsChannelId,
+          channelId: tubsChannelId,
         };
         console.log('setting message object', tubsMsgId, obj);
         tub.setData(tub.getObjectKey({ model: 'message', tubsId: tubsMsgId }), obj);
