@@ -1,6 +1,6 @@
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 import { randomUUID } from 'node:crypto';
-import { Repo, DocHandle } from '@automerge/automerge-repo';
+import { Repo, DocHandle, DocHandleChangePayload } from '@automerge/automerge-repo';
 import { BroadcastChannelNetworkAdapter } from '@automerge/automerge-repo-network-broadcastchannel';
 // import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket";
 import { NodeFSStorageAdapter } from '@automerge/automerge-repo-storage-nodefs';
@@ -59,6 +59,7 @@ function _getDocEntry(doc:{ [index: string]: any }, nesting: string[]): any {
   }
 }
 
+
 export class Tub {
   repo: Repo;
   docHandle: DocHandle<unknown>;
@@ -81,35 +82,37 @@ export class Tub {
     return [ 'objects', model, tubsId ];
   }
   
-  checkCoverage(): void {
-    if (typeof this.doc['objects'] === 'undefined') {
-      console.log('attempt to check coverage on doc without objects', this.doc);
+  checkCoverage(doc: { [index: string]: any }): void {
+    if (typeof doc['objects'] === 'undefined') {
+      console.log('attempt to check coverage on doc without objects', doc);
       return;
     }
-    console.log('checking coverage', this.doc);
+    console.log('checking coverage', doc);
     try {
-      const models = Object.keys(this.doc['objects'])
+      const models = Object.keys(doc['objects'])
       models.forEach(model => {
-        const uuids = Object.keys(this.doc['objects'][model]);
+        const uuids = Object.keys(doc['objects'][model]);
         uuids.forEach(uuid => {
-          const localIds = Object.keys(this.doc['index'][this.platform][model]);
+          console.log(`Looking for ${model} keys in ${this.platform}`, typeof doc['index'][this.platform][model]);
+          
           let found = false;
-          for (let i = 0; i < localIds.length && !found; i++) {
-            if (this.doc['index'][this.platform][model][i] === uuid) {
-              found = true;
+          if (typeof doc['index'][this.platform][model] === 'object') {
+            const localIds = Object.keys(doc['index'][this.platform][model]);
+            for (let i = 0; i < localIds.length && !found; i++) {
+              if (doc['index'][this.platform][model][i] === uuid) {
+                found = true;
+              }
             }
           }
-          console.log(`${model} ${uuid} ${(found ? 'found' : 'NOT FOUND')} on ${this.platform}`);
+          console.log(`${model} ${uuid} ${(found ? 'found' : 'NOT FOUND')} in ${this.platform}`);
         });
       });
     } catch (e) {
       console.error(e);
     }
   }
-  handleChange(): void {
-    console.log('handling change!', this.doc);
-  // handleChange(data: { doc: DocHandle<unknown>, patchInfo: { before: object, after: object, source: string } }): void {
-      this.checkCoverage();
+  handleChange(data: DocHandleChangePayload<unknown>): void {
+    this.checkCoverage(data.doc);
     // console.log(
     //   `new doc contents in repo ${this.platform} is`,
     //   JSON.stringify(data.doc, null, 2),
