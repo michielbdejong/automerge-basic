@@ -57,7 +57,9 @@ export class SlackClient extends EventEmitter {
   private app: any;
   private logins: { [nonce: string]: string } = {};
   private logouts: { [nonce: string]: string } = {};
-  constructor() {
+  private expressFullUrl: string;
+  private tub: Tub;
+  constructor(expressFullUrl: string, tub: Tub) {
     super();
     this.app = new App({
       signingSecret: process.env.SLACK_SIGNING_SECRET,
@@ -66,14 +68,20 @@ export class SlackClient extends EventEmitter {
       socketMode: true,
       port: BOLT_PORT,
     });
+    this.expressFullUrl = expressFullUrl;
+    this.tub = tub;
   }
-
-  async create(EXPRESS_FULL_URL: string): Promise<void> {
+  async createOnPlatform(model: string, tubsId: string): Promise<void> {
+    const localizedObject = await this.tub.getLocalizedObject({ model, tubsId });
+    console.log('creating on Slack:', model, tubsId, localizedObject);
+  }
+  async listen(port: number, equivalences: Equivalences): Promise<void> {
+    this.tub.on('create', this.createOnPlatform.bind(this));
     this.app.command('/tubs-connect', async ({ command, ack }) => {
       const uuid = command.user_id;
       const nonce = randomBytes(16).toString('hex');
       this.logins[nonce] = uuid;
-      const loginURL = `${EXPRESS_FULL_URL}/slack/login?nonce=${nonce}`;
+      const loginURL = `${this.expressFullUrl}/slack/login?nonce=${nonce}`;
       await ack(loginURL);
     });
 
@@ -81,28 +89,25 @@ export class SlackClient extends EventEmitter {
       const uuid = command.user_id;
       const nonce = randomBytes(16).toString('hex');
       this.logouts[nonce] = uuid;
-      const logoutURL = `${EXPRESS_FULL_URL}/slack/logout?nonce=${nonce}`;
+      const logoutURL = `${this.expressFullUrl}/slack/logout?nonce=${nonce}`;
       await ack(logoutURL);
     });
 
     this.app.message(async ({ message }) => {
       this.emit('message', message);
     });
-  }
-  async listen(tub: Tub, port: number, equivalences: Equivalences): Promise<void> {
-    await this.create('');
     await this.app.start(port);
     this.on('message', async (message: IMessage) => {
       console.info('----------onMessage-----------');
-      const localId = tub.getIndexKey({ model: 'channel', localId: message.channel });
-      const tubsChannelId = await tub.getId(localId, equivalences[localId.join(':')]);
-      const tubsMsgId = await tub.getId(tub.getIndexKey({ model: 'message', localId: message.client_msg_id }));
+      const localId = this.tub.getIndexKey({ model: 'channel', localId: message.channel });
+      const tubsChannelId = await this.tub.getId(localId, equivalences[localId.join(':')], true);
+      const tubsMsgId = await this.tub.getId(this.tub.getIndexKey({ model: 'message', localId: message.client_msg_id }), undefined, true);
       const messageToStore = {
         id: tubsMsgId,
         text: message.text,
         channel: tubsChannelId,
       };
-      tub.setData(tub.getObjectKey({ model: 'message', tubsId: tubsMsgId }), messageToStore);
+      this.tub.setData(this.tub.getObjectKey({ model: 'message', tubsId: tubsMsgId }), messageToStore);
       console.log(JSON.stringify(message, null, 2));
     });
   }  

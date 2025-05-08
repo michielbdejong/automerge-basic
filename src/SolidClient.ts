@@ -86,19 +86,19 @@ export class SolidClient {
         latestMessages: { uri: string, text: string, date: Date, authorWebId: string }[],
       } = await this.module.readChat(topic);
       const localId = tub.getIndexKey({ model: 'channel', localId: topic });
-      const tubsChannelId = await tub.getId(localId, equivalences[localId.join(':')]);
+      const tubsChannelId = await tub.getId(localId, equivalences[localId.join(':')], true);
       await Promise.all(latestMessages.map(async (entry) => {
         const messageKey = tub.getIndexKey({ model: 'message', localId: entry.uri });
         // console.log('getting Id for message', messageKey);
-        const tubsMsgId = await tub.getId(messageKey);
+        const tubsMsgId = await tub.getId(messageKey, undefined, true);
         const authorKey = tub.getIndexKey({ model: 'author', localId: entry.authorWebId});
         // console.log('getting Id for author', authorKey);
-        const authorId = await tub.getId(authorKey);
+        const tubsAuthorId = await tub.getId(authorKey, undefined, true);
         const obj = {
           id: tubsMsgId,
           text: entry.text,
           date: entry.date,
-          authorId: authorId,
+          authorId: tubsAuthorId,
           channel: tubsChannelId,
         };
         console.log('setting message object', tubsMsgId, obj);

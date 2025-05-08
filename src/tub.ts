@@ -1,4 +1,5 @@
 /* eslint-disable  @typescript-eslint/no-explicit-any */
+import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import { Repo, DocHandle, DocHandleChangePayload } from '@automerge/automerge-repo';
 import { BroadcastChannelNetworkAdapter } from '@automerge/automerge-repo-network-broadcastchannel';
@@ -60,7 +61,7 @@ function _getDocEntry(doc:{ [index: string]: any }, nesting: string[]): any {
 }
 
 
-export class Tub {
+export class Tub extends EventEmitter {
   repo: Repo;
   docHandle: DocHandle<unknown>;
   doc: {
@@ -68,6 +69,7 @@ export class Tub {
   };
   platform: string;
   constructor(platform: string) {
+    super();
     this.repo = new Repo({
       // network: [new BrowserWebSocketClientAdapter('wss://sync.automerge.org')],
       network: [new BroadcastChannelNetworkAdapter()],
@@ -93,8 +95,7 @@ export class Tub {
       models.forEach(model => {
         const uuids = Object.keys(doc['objects'][model]);
         uuids.forEach(uuid => {
-          console.log(`Looking for ${model} keys in ${this.platform}`, typeof doc['index'][this.platform][model]);
-          
+          // console.log(`Looking for ${model} keys in ${this.platform}`, typeof doc['index'][this.platform][model]);
           let found = false;
           if (typeof doc['index'][this.platform][model] === 'object') {
             const localIds = Object.keys(doc['index'][this.platform][model]);
@@ -105,6 +106,7 @@ export class Tub {
             }
           }
           console.log(`${model} ${uuid} ${(found ? 'found' : 'NOT FOUND')} in ${this.platform}`);
+          this.emit('create', model, uuid);
         });
       });
     } catch (e) {
@@ -162,7 +164,7 @@ export class Tub {
     }
     return entry;
   }
-  async getDictValue(key: string[], altKey?: string[]): Promise<any> {
+  async getDictValue(key: string[], altKey?: string[], mintIfMissing?: boolean): Promise<any> {
     // console.log('getDictValue', key, altKey);
  
     if (getDocEntry(this.doc, key)) {
@@ -171,10 +173,37 @@ export class Tub {
     if (altKey && getDocEntry(this.doc, altKey)) {
       return this.ensureCopied(altKey, key);
     }
-    return this.setDictValue(key, altKey, randomUUID());
+    if (mintIfMissing) {
+      return this.setDictValue(key, altKey, randomUUID());
+    }
+    return undefined;
   }
-  async getId(localId: string[], altId?: string[]): Promise<string> {
-    return this.getDictValue(localId, altId);
+  async getId(localId: string[], altId?: string[], mintIfMissing?: boolean): Promise<string> {
+    return this.getDictValue(localId, altId, mintIfMissing);
+  }
+  getLocalizedId({ model, tubsId }: { model: string, tubsId: string }): string {
+    return ['tbd', this.platform, model, tubsId].join('?');
+  }
+  async getLocalizedObject({ model, tubsId }: { model: string, tubsId: string }): Promise<any> {
+    const key = this.getObjectKey({ model, tubsId });
+    const obj = this.getDictValue(key);
+    // for instance if this is a chat message from Solid, it will look like this:
+    // {
+    //   id: tubsMsgId,
+    //   text: entry.text,
+    //   date: entry.date,
+    //   authorId: tubsAuthorId,
+    //   channelId: tubsChannelId,
+    // }
+    Object.keys(obj).forEach(key => {
+      if (key === 'id') {
+        obj[key] = this.getLocalizedId({ model, tubsId: obj[key] });
+      } else if (key.endsWith('Id')) {
+        const relatedModel = key.substring(0, key.length - `Id`.length); 
+        obj[key] = this.getLocalizedId({ model: relatedModel, tubsId: obj[key] });
+      }
+    });
+    return obj;
   }
   async setData(uuidSpec: string[], value: unknown): Promise<void> {
     return this.setDictValue(uuidSpec, undefined, value);
