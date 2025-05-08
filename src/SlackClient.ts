@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 const bolt = await import('@slack/bolt');
-import { Tub } from './tub.js';
+import { Tub, Equivalences } from './tub.js';
 
 const App = bolt.default.App;
 
@@ -89,7 +89,7 @@ export class SlackClient extends EventEmitter {
       this.emit('message', message);
     });
   }
-  async listen(tub: Tub, port: number, equivalences: { [slack: string]: string[] }): Promise<void> {
+  async listen(tub: Tub, port: number, equivalences: Equivalences): Promise<void> {
     await this.create('');
     await this.app.start(port);
     this.on('message', async (message: IMessage) => {

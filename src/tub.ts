@@ -5,6 +5,12 @@ import { BroadcastChannelNetworkAdapter } from '@automerge/automerge-repo-networ
 // import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket";
 import { NodeFSStorageAdapter } from '@automerge/automerge-repo-storage-nodefs';
 
+// this is for virtual objects, that are reflected into local versions on multiple platforms.
+// it's a map from local ID in this tub to a single equivalent local ID in some other Tub.
+// TODO: allow virtual objects across >2 platforms
+// joinedLocalId === localId.join(':')
+export type Equivalences = { [joinedLocalId: string]: string[] };
+
 export function setDocEntry(doc:{ [index: string]: any }, nesting: string[], value: any): void {
     console.log('setDocEntry', nesting, value);
     return _setDocEntry(doc, JSON.parse(JSON.stringify(nesting)), value);
@@ -101,6 +107,7 @@ export class Tub {
     }
   }
   handleChange(): void {
+    console.log('handling change!', this.doc);
   // handleChange(data: { doc: DocHandle<unknown>, patchInfo: { before: object, after: object, source: string } }): void {
       this.checkCoverage();
     // console.log(
@@ -138,9 +145,10 @@ export class Tub {
       if (altKey) {
        setDocEntry(d, altKey, value);
       }
+      console.log('doc changed inside callback!', d);
     });
     this.doc = await this.docHandle.doc();
-    // console.log(`this.doc updated in ${this.platform}`, typeof this.doc);
+    console.log(`this.doc updated in ${this.platform}`, this.doc);
     return value;
   }
   async ensureCopied(existingKey: string[], otherKey?: string[]): Promise<any> {

@@ -1,7 +1,7 @@
 import { v7 } from "css-authn";
 import {Fetcher, graph, UpdateManager, AutoInitOptions, IndexedFormula } from "rdflib";
 import ChatsModuleRdfLib, { ChatsModule } from "@solid-data-modules/chats-rdflib";
-import { Tub } from "./tub.js";
+import { Tub, Equivalences } from "./tub.js";
 
 export class SolidClient {
   fetch: typeof globalThis.fetch;
@@ -62,7 +62,7 @@ export class SolidClient {
     return containerUri + dateFolders + "/chat.ttl";
   }
   
-  async listen(tub: Tub, equivalences: { [slack: string]: string[] }): Promise<void> {
+  async listen(tub: Tub, equivalences: Equivalences): Promise<void> {
     const topic = process.env.CHANNEL_IN_SOLID;
     const todayDoc = this.getTodayDoc(topic);
     const streamingUrl = `https://solidcommunity.net/.notifications/StreamingHTTPChannel2023/${encodeURIComponent(todayDoc)}`;
