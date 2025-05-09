@@ -108,6 +108,7 @@ export class Tub extends EventEmitter {
           console.log(`On ${this.platform}, ${model} ${tubsId} has localId ${localId}`);
           if (typeof localId === 'undefined') {
             if (this.creating[tubsId]) {
+              console.log(`Already creating ${tubsId} on ${this.platform}`);
               return;
             }
             this.creating[tubsId] = true;
