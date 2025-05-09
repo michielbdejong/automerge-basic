@@ -78,6 +78,12 @@ export class SlackClient extends EventEmitter {
     const created = await this.app.client.chat.postMessage({
       channel: localizedObject.channelId,
       text: localizedObject.text,
+      metadata: {
+        event_type: "from_tubs",
+        event_payload: {
+          tubsId,
+        },
+      },
     });
     console.log(created);
   }

@@ -1,7 +1,10 @@
+import { fetch, Agent, RequestInfo as UndiciRequestInfo, RequestInit as UndiciRequestInit } from 'undici';
 import { v7 } from "css-authn";
 import {Fetcher, graph, UpdateManager, AutoInitOptions, IndexedFormula } from "rdflib";
 import ChatsModuleRdfLib, { ChatsModule } from "@solid-data-modules/chats-rdflib";
 import { Tub, Equivalences } from "./tub.js";
+
+// setGlobalDispatcher(new Agent({bodyTimeout: 0}));
 
 export class SolidClient {
   fetch: typeof globalThis.fetch;
@@ -19,6 +22,11 @@ export class SolidClient {
       email: process.env.SOLID_EMAIL,
       password: process.env.SOLID_PASSWORD,
       provider: process.env.SOLID_SERVER,
+      fetch: (input: RequestInfo, init?: RequestInit): Promise<Response> => {
+        const updatedInit: UndiciRequestInit = init as unknown || {};
+        updatedInit.dispatcher = new Agent({bodyTimeout: 0});
+        return fetch(input as UndiciRequestInfo, updatedInit) as unknown as Promise<Response>;
+      }
     });
     // 1️⃣ create rdflib store, fetcher and updater as usual
     this.fetcher = new Fetcher(
@@ -65,6 +73,7 @@ export class SolidClient {
   async listen(tub: Tub, equivalences: Equivalences): Promise<void> {
     const topic = process.env.CHANNEL_IN_SOLID;
     const todayDoc = this.getTodayDoc(topic);
+    // FIXME: discover this URL from the response header link:
     const streamingUrl = `https://solidcommunity.net/.notifications/StreamingHTTPChannel2023/${encodeURIComponent(todayDoc)}`;
     // console.log('Fetching Solid streaming URL');
     const res = await this.fetch(streamingUrl);
