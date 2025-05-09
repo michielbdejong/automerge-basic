@@ -13,9 +13,9 @@ createServer((req: IncomingMessage, res: ServerResponse) => {
 }).listen(8080);
 
 async function runSolid(solidTub: Tub, equivalences: Equivalences): Promise<void> {
-  const solid = new SolidClient();
+  const solid = new SolidClient(solidTub);
   await solid.connect();
-  await solid.listen(solidTub, equivalences);
+  await solid.listen(equivalences);
   // await solid.createChat('https://michielbdejong.solidcommunity.net/IndividualChats/bla', 'Bla Chat');
   // const read = await solid.readChat('https://michielbdejong.solidcommunity.net/IndividualChats/blactbd1Z/index.ttl#this');
   // console.log(read);

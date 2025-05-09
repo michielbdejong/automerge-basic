@@ -132,7 +132,7 @@ export class Tub extends EventEmitter {
     this.docHandle = createRepo().find(docUrl as any);
     return this.setupDoc();
   }
-  async setDictValue(key: string[], altKey: string[] | undefined, value: any): Promise<void> {
+  setDictValue(key: string[], altKey: string[] | undefined, value: any): void {
     // console.log('setDictValue', key, altKey, value);
     this.docHandle.change((d) => {
       setDocEntry(d, key, value);
@@ -144,15 +144,15 @@ export class Tub extends EventEmitter {
     console.log(`this.docHandle.docSync() updated in ${this.platform}`, this.docHandle.docSync());
     return value;
   }
-  async ensureCopied(existingKey: string[], otherKey?: string[]): Promise<any> {
+  ensureCopied(existingKey: string[], otherKey?: string[]): any {
     console.log('ensureCopied', existingKey, otherKey);
     const entry = getDocEntry(this.docHandle.docSync(), existingKey);
     if (otherKey && typeof getDocEntry(this.docHandle.docSync(), otherKey) === 'undefined') {
-      await this.setDictValue(otherKey, undefined, entry); 
+      this.setDictValue(otherKey, undefined, entry); 
     }
     return entry;
   }
-  async getDictValue(key: string[], altKey?: string[], mintIfMissing?: boolean): Promise<any> {
+  getDictValue(key: string[], altKey?: string[], mintIfMissing?: boolean): any {
     console.log('getDictValue', key, altKey, mintIfMissing);
  
     if (getDocEntry(this.docHandle.docSync(), key)) {
@@ -166,7 +166,7 @@ export class Tub extends EventEmitter {
     }
     return undefined;
   }
-  async getId(localId: string[], altId?: string[], mintIfMissing?: boolean): Promise<string> {
+  getId(localId: string[], altId?: string[], mintIfMissing?: boolean): string {
     return this.getDictValue(localId, altId, mintIfMissing);
   }
   getLocalId({ model, tubsId }: { model: string, tubsId: string }): string | undefined {
@@ -181,9 +181,9 @@ export class Tub extends EventEmitter {
     }
     return undefined;
   }
-  async getLocalizedObject({ model, tubsId }: { model: string, tubsId: string }): Promise<any> {
+  getLocalizedObject({ model, tubsId }: { model: string, tubsId: string }): any {
     const key = this.getObjectKey({ model, tubsId });
-    const obj = await this.getDictValue(key);
+    const obj = this.getDictValue(key);
     console.log('getLocalizedObject; starting from:', model, tubsId, key, obj);
     // for instance if this is a chat message from Solid, it will look like this:
     // {
@@ -207,8 +207,11 @@ export class Tub extends EventEmitter {
     console.log('returning obj', obj);
     return obj;
   }
-  async setData(uuidSpec: string[], value: unknown): Promise<void> {
+  setData(uuidSpec: string[], value: unknown): void {
     return this.setDictValue(uuidSpec, undefined, value);
+  }
+  setLocalId(indexKey: string[], tubsId: string): void {
+    this.setDictValue(indexKey, undefined, tubsId);
   }
 }
 

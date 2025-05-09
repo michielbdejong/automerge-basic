@@ -85,10 +85,14 @@ export class SlackClient extends EventEmitter {
         },
       },
     });
+    if (created.ok) {
+      const localKey = this.tub.getIndexKey({ model: 'message', localId: created.ts });
+      this.tub.setLocalId(localKey, tubsId);
+    }
     console.log(created);
   }
   async listen(port: number, equivalences: Equivalences): Promise<void> {
-    this.tub.on('create', this.createOnPlatform.bind(this));
+    // this.tub.on('create', this.createOnPlatform.bind(this));
     this.app.command('/tubs-connect', async ({ command, ack }) => {
       const uuid = command.user_id;
       const nonce = randomBytes(16).toString('hex');

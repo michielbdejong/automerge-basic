@@ -1,8 +1,12 @@
 import { Agent } from 'undici';
 import { v7 } from "css-authn";
-import {Fetcher, graph, UpdateManager, AutoInitOptions, IndexedFormula } from "rdflib";
+import {Fetcher, graph, UpdateManager, AutoInitOptions, IndexedFormula, sym, Namespace, st, lit } from "rdflib";
+import { executeUpdate } from "@solid-data-modules/rdflib-utils";
 import ChatsModuleRdfLib, { ChatsModule } from "@solid-data-modules/chats-rdflib";
 import { Tub, Equivalences } from "./tub.js";
+
+const tubs = Namespace("http://tubsproject.org/ns/#");
+
 
 // setGlobalDispatcher(new Agent({bodyTimeout: 0}));
 
@@ -12,7 +16,9 @@ export class SolidClient {
   fetcher: Fetcher;
   updater: UpdateManager;
   module: ChatsModule;
-  constructor() {
+  tub: Tub;
+  constructor(tub: Tub) {
+    this.tub = tub;
     this.store = graph();
     this.updater = new UpdateManager(this.store);
   }
@@ -22,18 +28,6 @@ export class SolidClient {
       email: process.env.SOLID_EMAIL,
       password: process.env.SOLID_PASSWORD,
       provider: process.env.SOLID_SERVER,
-      // fetch: (input: RequestInfo, init?: RequestInit): Promise<Response> => {
-      //   const updatedInit: UndiciRequestInit = init as unknown || {};
-      //   // FIXME: this relies on deep knowledge of the CSS URL scheme, maybe there
-      //   // is a better way?
-      //   if (typeof input === 'string' && input.indexOf('StreamingHTTPChannel2023') !== -1) {
-      //     console.log('streaming http request', input);
-      //     updatedInit.dispatcher = new Agent({bodyTimeout: 0});
-      //   } else {
-      //     console.log('non-streaming http request', input);
-      //   }
-      //   return fetch(input as UndiciRequestInfo, updatedInit) as unknown as Promise<Response>;
-      // }
     });
     // 1️⃣ create rdflib store, fetcher and updater as usual
     this.fetcher = new Fetcher(
@@ -76,8 +70,34 @@ export class SolidClient {
     const containerUri = chatUri.substring(0, chatUri.length - `index.ttl#this`.length);
     return containerUri + dateFolders + "/chat.ttl";
   }
-  
-  async listen(tub: Tub, equivalences: Equivalences): Promise<void> {
+  async createOnPlatform(model: string, tubsId: string, localizedObject: any): Promise<void> {
+    console.log('creating on Solid:', model, tubsId, localizedObject);
+    const authorWebId = '';
+    // https://github.com/solid-contrib/data-modules/blob/17aadadd17ae74906de1526b62cba32b8fc6cd36/chats/rdflib/src/index.ts#L84
+    const messageUri = await this.module.postMessage({
+      chatUri: localizedObject.id,
+      text: localizedObject.text,
+      // metadata: {
+      //   event_type: "from_tubs",
+      //   event_payload: {
+      //     tubsId,
+      //   },
+      // },
+      authorWebId,
+    });
+    const messageNode = sym(messageUri);
+    await executeUpdate(this.fetcher, this.updater, {
+      insertions: [
+        st(messageNode, tubs("id"), lit(tubsId), messageNode.doc()),
+      ],
+      deletions: [],
+      filesToCreate: [],
+    });
+
+    console.log(`added message to Solid chat`, messageUri);
+  }
+  async listen(equivalences: Equivalences): Promise<void> {
+    this.tub.on('create', this.createOnPlatform.bind(this));
     const topic = process.env.CHANNEL_IN_SOLID;
     const todayDoc = this.getTodayDoc(topic);
     // FIXME: discover this URL from the response header link:
@@ -103,15 +123,15 @@ export class SolidClient {
         name: string,
         latestMessages: { uri: string, text: string, date: Date, authorWebId: string }[],
       } = await this.module.readChat(topic);
-      const localId = tub.getIndexKey({ model: 'channel', localId: topic });
-      const tubsChannelId = await tub.getId(localId, equivalences[localId.join(':')], true);
+      const localIndexKey = this.tub.getIndexKey({ model: 'channel', localId: topic });
+      const tubsChannelId = this.tub.getId(localIndexKey, equivalences[localIndexKey.join(':')], true);
       await Promise.all(latestMessages.map(async (entry) => {
-        const messageKey = tub.getIndexKey({ model: 'message', localId: entry.uri });
+        const messageKey = this.tub.getIndexKey({ model: 'message', localId: entry.uri });
         // console.log('getting Id for message', messageKey);
-        const tubsMsgId = await tub.getId(messageKey, undefined, true);
-        const authorKey = tub.getIndexKey({ model: 'author', localId: entry.authorWebId});
+        const tubsMsgId = this.tub.getId(messageKey, undefined, true);
+        const authorKey = this.tub.getIndexKey({ model: 'author', localId: entry.authorWebId});
         // console.log('getting Id for author', authorKey);
-        const tubsAuthorId = await tub.getId(authorKey, undefined, true);
+        const tubsAuthorId = this.tub.getId(authorKey, undefined, true);
         const obj = {
           id: tubsMsgId,
           text: entry.text,
@@ -120,7 +140,7 @@ export class SolidClient {
           channelId: tubsChannelId,
         };
         console.log('setting message object', tubsMsgId, obj);
-        tub.setData(tub.getObjectKey({ model: 'message', tubsId: tubsMsgId }), obj);
+        this.tub.setData(this.tub.getObjectKey({ model: 'message', tubsId: tubsMsgId }), obj);
       }));
     }
     // console.log('Outside stream listener\'s for-await loop');
