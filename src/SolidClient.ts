@@ -1,4 +1,4 @@
-import { fetch, Agent, RequestInfo as UndiciRequestInfo, RequestInit as UndiciRequestInit } from 'undici';
+import { Agent } from 'undici';
 import { v7 } from "css-authn";
 import {Fetcher, graph, UpdateManager, AutoInitOptions, IndexedFormula } from "rdflib";
 import ChatsModuleRdfLib, { ChatsModule } from "@solid-data-modules/chats-rdflib";
@@ -22,18 +22,18 @@ export class SolidClient {
       email: process.env.SOLID_EMAIL,
       password: process.env.SOLID_PASSWORD,
       provider: process.env.SOLID_SERVER,
-      fetch: (input: RequestInfo, init?: RequestInit): Promise<Response> => {
-        const updatedInit: UndiciRequestInit = init as unknown || {};
-        // FIXME: this relies on deep knowledge of the CSS URL scheme, maybe there
-        // is a better way?
-        if (typeof input === 'string' && input.indexOf('StreamingHTTPChannel2023') !== -1) {
-          console.log('streaming http request', input);
-          updatedInit.dispatcher = new Agent({bodyTimeout: 0});
-        } else {
-          console.log('non-streaming http request', input);
-        }
-        return fetch(input as UndiciRequestInfo, updatedInit) as unknown as Promise<Response>;
-      }
+      // fetch: (input: RequestInfo, init?: RequestInit): Promise<Response> => {
+      //   const updatedInit: UndiciRequestInit = init as unknown || {};
+      //   // FIXME: this relies on deep knowledge of the CSS URL scheme, maybe there
+      //   // is a better way?
+      //   if (typeof input === 'string' && input.indexOf('StreamingHTTPChannel2023') !== -1) {
+      //     console.log('streaming http request', input);
+      //     updatedInit.dispatcher = new Agent({bodyTimeout: 0});
+      //   } else {
+      //     console.log('non-streaming http request', input);
+      //   }
+      //   return fetch(input as UndiciRequestInfo, updatedInit) as unknown as Promise<Response>;
+      // }
     });
     // 1️⃣ create rdflib store, fetcher and updater as usual
     this.fetcher = new Fetcher(
@@ -83,7 +83,9 @@ export class SolidClient {
     // FIXME: discover this URL from the response header link:
     const streamingUrl = `https://solidcommunity.net/.notifications/StreamingHTTPChannel2023/${encodeURIComponent(todayDoc)}`;
     // console.log('Fetching Solid streaming URL');
-    const res = await this.fetch(streamingUrl);
+    const res = await this.fetch(streamingUrl, {
+      dispatcher: new Agent({bodyTimeout: 0})
+    } as RequestInit);
     // console.log('Setting up stream listener');
     const textStream = res.body.pipeThrough(new TextDecoderStream());
     for await (const notificationText of textStream as unknown as {
