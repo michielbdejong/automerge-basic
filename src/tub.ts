@@ -13,7 +13,7 @@ import { NodeFSStorageAdapter } from '@automerge/automerge-repo-storage-nodefs';
 export type Equivalences = { [joinedLocalId: string]: string[] };
 
 export function setDocEntry(doc:{ [index: string]: any }, nesting: string[], value: any): void {
-    console.log('setDocEntry', nesting, value);
+    // console.log('setDocEntry', nesting, value);
     return _setDocEntry(doc, JSON.parse(JSON.stringify(nesting)), value);
 }
 function _setDocEntry(doc:{ [index: string]: any }, nesting: string[], value: any): void {
@@ -71,9 +71,15 @@ function createRepo(): Repo {
 export class Tub extends EventEmitter {
   docHandle: DocHandle<unknown>;
   platform: string;
+  creating: {
+    [tubsId: string]: boolean
+  } = {};
   constructor(platform: string) {
     super();
     this.platform = platform;
+    // setInterval(() => {
+    //   this.checkCoverage();
+    // }, 10000);
   }
   getIndexKey({ model, localId }: { model: string, localId: string}): string[] {
     return [ 'index', this.platform, model, localId ];
@@ -87,18 +93,24 @@ export class Tub extends EventEmitter {
     // emit an event to trigger a check if that foreignId is linked.
   }
   checkObjectCoverage(): void {
-    console.log(`checking object coverage on ${this.platform}`, this.docHandle.docSync());
+    // console.log(`checking object coverage on ${this.platform}`, this.docHandle.docSync());
     try {
+      // console.log('in try');
       const models = Object.keys(this.docHandle.docSync()['objects']);
+      // console.log('models', models);
       models.forEach(model => {
-        console.log(`Checking ${model} object coverage on ${this.platform}`);
+        // console.log(`Checking ${model} object coverage on ${this.platform}`);
         const uuids = Object.keys(this.docHandle.docSync()['objects'][model]);
         uuids.forEach(tubsId => {
-          console.log(`Checking object coverage for ${model} ${tubsId}`);
+          // console.log(`Checking object coverage for ${model} ${tubsId}`);
           const localId = this.getLocalId({ model, tubsId });
           // console.log('localId', localId);
-          console.log(`${model} ${tubsId} localId in ${this.platform} is ${localId}`);
+          console.log(`On ${this.platform}, ${model} ${tubsId} has localId ${localId}`);
           if (typeof localId === 'undefined') {
+            if (this.creating[tubsId]) {
+              return;
+            }
+            this.creating[tubsId] = true;
             this.emit('create', model, tubsId);
           }
         });
@@ -108,23 +120,23 @@ export class Tub extends EventEmitter {
     }
   }
   checkCoverage(): void {
+    // console.log('--------------------');
+    // console.log(this.platform);
+    // console.log(this.docHandle.docSync());
+    // console.log(JSON.stringify(this.docHandle.docSync(), null, 2));
+    // console.log('--------------------');
+    // console.log(`Checking coverage in ${this.platform} tub`, JSON.stringify(this.docHandle.docSync(), null, 2));
     if (typeof this.docHandle.docSync()['index'] !== 'undefined') {
       this.checkIndexCoverage();
     }
-    if (typeof this.docHandle.docSync()['object'] !== 'undefined') {
+    if (typeof this.docHandle.docSync()['objects'] !== 'undefined') {
       this.checkObjectCoverage();
     }
   }
-  handleChange(): void {
-    this.checkCoverage();
-    // console.log(
-    //   `new doc contents in repo ${this.platform} is`,
-    //   JSON.stringify(data.doc, null, 2),
-    //   data.patchInfo.source,
-    // );
-  }
   async setupDoc(): Promise<string> {
-    this.docHandle.on('change', this.handleChange.bind(this));
+    this.docHandle.on('change', () => {
+      this.checkCoverage();
+    });
     // console.log(`doc created in repo ${this.platform}`, this.docHandle.documentId);
     while (!this.docHandle.isReady()) {
       // console.log(`waiting for doc ${this.platform} to be ready`);
@@ -152,13 +164,13 @@ export class Tub extends EventEmitter {
       if (altKey) {
        setDocEntry(d, altKey, value);
       }
-      console.log('doc changed inside callback!', d);
+      // console.log('doc changed inside callback!', d);
     });
-    console.log(`this.docHandle.docSync() updated in ${this.platform}`, this.docHandle.docSync());
+    // console.log(`this.docHandle.docSync() updated in ${this.platform}`, this.docHandle.docSync());
     return value;
   }
   ensureCopied(existingKey: string[], otherKey?: string[]): any {
-    console.log('ensureCopied', existingKey, otherKey);
+    // console.log('ensureCopied', existingKey, otherKey);
     const entry = getDocEntry(this.docHandle.docSync(), existingKey);
     if (otherKey && typeof getDocEntry(this.docHandle.docSync(), otherKey) === 'undefined') {
       this.setDictValue(otherKey, undefined, entry); 
@@ -166,7 +178,7 @@ export class Tub extends EventEmitter {
     return entry;
   }
   getDictValue(key: string[], altKey?: string[], mintIfMissing?: boolean): any {
-    console.log('getDictValue', key, altKey, mintIfMissing);
+    // console.log('getDictValue', key, altKey, mintIfMissing);
  
     if (getDocEntry(this.docHandle.docSync(), key)) {
       return this.ensureCopied(key, altKey);
@@ -182,16 +194,19 @@ export class Tub extends EventEmitter {
   getId(localId: string[], altId?: string[], mintIfMissing?: boolean): string {
     return this.getDictValue(localId, altId, mintIfMissing);
   }
-  getLocalId({ model, tubsId }: { model: string, tubsId: string }): string | undefined {
-    // console.log(`checking type of doc['index'][${this.platform}][${model}]:`, this.docHandle.docSync());
-    if (typeof this.docHandle.docSync()['index'][this.platform][model] === 'object') {
-      // console.log(`Getting ${model} ids for ${this.platform}`);
-      const localIds = Object.keys(this.docHandle.docSync()['index'][this.platform][model]);
+  getLocalId({ model, tubsId, platform }: { model: string, tubsId: string, platform?: string }): string | undefined {
+    if (!platform) {
+      platform = this.platform;
+    }
+    // console.log(`checking type of doc['index'][${platform}][${model}]:`, this.docHandle.docSync());
+    if (typeof this.docHandle.docSync()['index'][platform][model] === 'object') {
+      // console.log(`Getting ${model} ids for ${platform}`);
+      const localIds = Object.keys(this.docHandle.docSync()['index'][platform][model]);
       // console.log(`Searching through`, localIds);
       for (let i = 0; i < localIds.length; i++) {
         const localId = localIds[i];
-        // console.log('Considering', localId, this.docHandle.docSync()['index'][this.platform][model][localId], tubsId);
-        if (this.docHandle.docSync()['index'][this.platform][model][localId] === tubsId) {
+        // console.log('Considering', localId, this.docHandle.docSync()['index'][platform][model][localId], tubsId);
+        if (this.docHandle.docSync()['index'][platform][model][localId] === tubsId) {
           return localId;
         }
       }
@@ -201,7 +216,7 @@ export class Tub extends EventEmitter {
   getLocalizedObject({ model, tubsId }: { model: string, tubsId: string }): any {
     const key = this.getObjectKey({ model, tubsId });
     const obj = this.getDictValue(key);
-    console.log('getLocalizedObject; starting from:', model, tubsId, key, obj);
+    // console.log('getLocalizedObject; starting from:', model, tubsId, key, obj);
     // for instance if this is a chat message from Solid, it will look like this:
     // {
     //   id: tubsMsgId,
@@ -211,14 +226,20 @@ export class Tub extends EventEmitter {
     //   channelId: tubsChannelId,
     // }
     Object.keys(obj).forEach(key => {
-      console.log('considering key', key, obj[key]);
+      // console.log('considering key', key, obj[key]);
       if (key === 'id') {
         obj[key] = this.getLocalId({ model, tubsId: obj[key] });
-        console.log('updated', key, obj[key]);
+        // if (typeof obj[key] === 'undefined') {
+        //   throw new Error(`could not localize ${key} for ${model} from tubsId value ${tubsId}`);
+        // }
+        // console.log('updated', key, obj[key]);
       } else if (key.endsWith('Id')) {
         const relatedModel = key.substring(0, key.length - `Id`.length); 
         obj[key] = this.getLocalId({ model: relatedModel, tubsId: obj[key] });
-        console.log('updated', key, obj[key]);
+        // if (typeof obj[key] === 'undefined') {
+        //   throw new Error(`could not localize ${key} for ${model} from ${relatedModel} tubsId value ${tubsId}`);
+        // }
+        // console.log('updated', key, obj[key]);
       }
     });
     console.log('returning obj', obj);

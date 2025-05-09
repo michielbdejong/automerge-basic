@@ -73,6 +73,10 @@ export class SlackClient extends EventEmitter {
   }
   async createOnPlatform(model: string, tubsId: string): Promise<void> {
     const localizedObject = await this.tub.getLocalizedObject({ model, tubsId });
+    if (typeof localizedObject.channelId === 'undefined') {
+      console.error(`failed to localize channelId for ${model} ${tubsId}`);
+      return;
+    }
     console.log('creating on Slack:', model, tubsId, localizedObject);
     // https://docs.slack.dev/reference/methods/chat.postMessage
     const created = await this.app.client.chat.postMessage({
@@ -84,6 +88,10 @@ export class SlackClient extends EventEmitter {
           tubsId,
         },
       },
+
+
+
+
     });
     if (created.ok) {
       const localKey = this.tub.getIndexKey({ model: 'message', localId: created.ts });
@@ -93,7 +101,7 @@ export class SlackClient extends EventEmitter {
   }
   async connect(port: number, equivalences: Equivalences): Promise<void> {
     console.log('Connecting to Slack...');
-    // this.tub.on('create', this.createOnPlatform.bind(this));
+    this.tub.on('create', this.createOnPlatform.bind(this));
     this.app.command('/tubs-connect', async ({ command, ack }) => {
       const uuid = command.user_id;
       const nonce = randomBytes(16).toString('hex');
@@ -118,7 +126,7 @@ export class SlackClient extends EventEmitter {
       console.info('----------onMessage-----------');
       const localId = this.tub.getIndexKey({ model: 'channel', localId: message.channel });
       const tubsChannelId = await this.tub.getId(localId, equivalences[localId.join(':')], true);
-      const tubsMsgId = await this.tub.getId(this.tub.getIndexKey({ model: 'message', localId: message.client_msg_id }), undefined, true);
+      const tubsMsgId = await this.tub.getId(this.tub.getIndexKey({ model: 'message', localId: message.ts }), undefined, true);
       const messageToStore = {
         id: tubsMsgId,
         text: message.text,
