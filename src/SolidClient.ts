@@ -1,11 +1,12 @@
+/* eslint-disable  @typescript-eslint/no-explicit-any */
 import { Agent } from 'undici';
 import { v7 } from "css-authn";
-import {Fetcher, graph, UpdateManager, AutoInitOptions, IndexedFormula, sym, Namespace, st, lit } from "rdflib";
-import { executeUpdate } from "@solid-data-modules/rdflib-utils";
+import {Fetcher, graph, UpdateManager, AutoInitOptions, IndexedFormula, sym, Namespace, st } from "rdflib";
+// import { executeUpdate } from "@solid-data-modules/rdflib-utils";
 import ChatsModuleRdfLib, { ChatsModule } from "@solid-data-modules/chats-rdflib";
 import { Tub, Equivalences } from "./tub.js";
 
-const tubs = Namespace("http://tubsproject.org/ns/#");
+const owl = Namespace("http://www.w3.org/2002/07/owl#");
 
 
 // setGlobalDispatcher(new Agent({bodyTimeout: 0}));
@@ -23,7 +24,7 @@ export class SolidClient {
     this.updater = new UpdateManager(this.store);
   }
   async connect(): Promise<void> {
-    console.log(`Connnecting to Solid...`);
+    console.log(`Connecting to Solid...`);
     this.fetch = await v7.getAuthenticatedFetch({
       email: process.env.SOLID_EMAIL,
       password: process.env.SOLID_PASSWORD,
@@ -86,13 +87,9 @@ export class SolidClient {
       authorWebId,
     });
     const messageNode = sym(messageUri);
-    await executeUpdate(this.fetcher, this.updater, {
-      insertions: [
-        st(messageNode, tubs("id"), lit(tubsId), messageNode.doc()),
-      ],
-      deletions: [],
-      filesToCreate: [],
-    });
+    await this.updater.updateMany([], [
+      st(messageNode, owl("sameAs"), sym(`https://tubsproject.org/id/reflector/message/${tubsId}`), messageNode.doc()),
+    ]);
 
     console.log(`added message to Solid chat`, messageUri);
   }
@@ -108,6 +105,7 @@ export class SolidClient {
     } as RequestInit);
     // console.log('Setting up stream listener');
     const textStream = res.body.pipeThrough(new TextDecoderStream());
+    let doneOne = false;
     for await (const notificationText of textStream as unknown as {
       [Symbol.asyncIterator](): AsyncIterableIterator<string>;
     }) {
@@ -126,6 +124,12 @@ export class SolidClient {
       const localIndexKey = this.tub.getIndexKey({ model: 'channel', localId: topic });
       const tubsChannelId = this.tub.getId(localIndexKey, equivalences[localIndexKey.join(':')], true);
       await Promise.all(latestMessages.map(async (entry) => {
+        if (doneOne) {
+          return;
+        } else {
+          doneOne = true;
+        }
+  
         const messageKey = this.tub.getIndexKey({ model: 'message', localId: entry.uri });
         // console.log('getting Id for message', messageKey);
         const tubsMsgId = this.tub.getId(messageKey, undefined, true);

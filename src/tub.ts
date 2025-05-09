@@ -82,24 +82,37 @@ export class Tub extends EventEmitter {
     return [ 'objects', model, tubsId ];
   }
   
-  checkCoverage(): void {
-    if (typeof this.docHandle.docSync()['objects'] === 'undefined') {
-      console.log('attempt to check coverage on doc without objects', this.docHandle.docSync());
-      return;
-    }
-    console.log('checking coverage', this.docHandle.docSync());
+  checkIndexCoverage(): void {
+    // if there is an index for this platform that also exists on another platform,
+    // emit an event to trigger a check if that foreignId is linked.
+  }
+  checkObjectCoverage(): void {
+    console.log(`checking object coverage on ${this.platform}`, this.docHandle.docSync());
     try {
-      const models = Object.keys(this.docHandle.docSync()['objects'])
+      const models = Object.keys(this.docHandle.docSync()['objects']);
       models.forEach(model => {
+        console.log(`Checking ${model} object coverage on ${this.platform}`);
         const uuids = Object.keys(this.docHandle.docSync()['objects'][model]);
         uuids.forEach(tubsId => {
-          const localizedId = this.getLocalId({ model, tubsId });
-          console.log(`${model} ${tubsId} ${(localizedId === 'undefined' ? 'found' : 'NOT FOUND')} in ${this.platform}`);
-          this.emit('create', model, tubsId);
+          console.log(`Checking object coverage for ${model} ${tubsId}`);
+          const localId = this.getLocalId({ model, tubsId });
+          // console.log('localId', localId);
+          console.log(`${model} ${tubsId} localId in ${this.platform} is ${localId}`);
+          if (typeof localId === 'undefined') {
+            this.emit('create', model, tubsId);
+          }
         });
       });
     } catch (e) {
       console.error(e);
+    }
+  }
+  checkCoverage(): void {
+    if (typeof this.docHandle.docSync()['index'] !== 'undefined') {
+      this.checkIndexCoverage();
+    }
+    if (typeof this.docHandle.docSync()['object'] !== 'undefined') {
+      this.checkObjectCoverage();
     }
   }
   handleChange(): void {
@@ -170,10 +183,14 @@ export class Tub extends EventEmitter {
     return this.getDictValue(localId, altId, mintIfMissing);
   }
   getLocalId({ model, tubsId }: { model: string, tubsId: string }): string | undefined {
+    // console.log(`checking type of doc['index'][${this.platform}][${model}]:`, this.docHandle.docSync());
     if (typeof this.docHandle.docSync()['index'][this.platform][model] === 'object') {
+      // console.log(`Getting ${model} ids for ${this.platform}`);
       const localIds = Object.keys(this.docHandle.docSync()['index'][this.platform][model]);
+      // console.log(`Searching through`, localIds);
       for (let i = 0; i < localIds.length; i++) {
         const localId = localIds[i];
+        // console.log('Considering', localId, this.docHandle.docSync()['index'][this.platform][model][localId], tubsId);
         if (this.docHandle.docSync()['index'][this.platform][model][localId] === tubsId) {
           return localId;
         }

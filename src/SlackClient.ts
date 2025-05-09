@@ -91,7 +91,8 @@ export class SlackClient extends EventEmitter {
     }
     console.log(created);
   }
-  async listen(port: number, equivalences: Equivalences): Promise<void> {
+  async connect(port: number, equivalences: Equivalences): Promise<void> {
+    console.log('Connecting to Slack...');
     // this.tub.on('create', this.createOnPlatform.bind(this));
     this.app.command('/tubs-connect', async ({ command, ack }) => {
       const uuid = command.user_id;

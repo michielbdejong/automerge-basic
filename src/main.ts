@@ -23,7 +23,7 @@ async function runSolid(solidTub: Tub, equivalences: Equivalences): Promise<void
 }
 async function runSlack(slackTub: Tub, equivalences: Equivalences): Promise<void> {
   const slack = new SlackClient('', slackTub);
-  await slack.listen(8080, equivalences);
+  await slack.connect(8080, equivalences);
 }
 
 async function createTubs(names: string[]): Promise<Tub[]> {
