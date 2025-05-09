@@ -24,7 +24,14 @@ export class SolidClient {
       provider: process.env.SOLID_SERVER,
       fetch: (input: RequestInfo, init?: RequestInit): Promise<Response> => {
         const updatedInit: UndiciRequestInit = init as unknown || {};
-        updatedInit.dispatcher = new Agent({bodyTimeout: 0});
+        // FIXME: this relies on deep knowledge of the CSS URL scheme, maybe there
+        // is a better way?
+        if (typeof input === 'string' && input.indexOf('StreamingHTTPChannel2023') !== -1) {
+          console.log('streaming http request', input);
+          updatedInit.dispatcher = new Agent({bodyTimeout: 0});
+        } else {
+          console.log('non-streaming http request', input);
+        }
         return fetch(input as UndiciRequestInfo, updatedInit) as unknown as Promise<Response>;
       }
     });
