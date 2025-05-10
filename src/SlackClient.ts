@@ -1,7 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 const bolt = await import('@slack/bolt');
-import { Tub, Equivalences } from './tub.js';
+import { Tub } from './tub.js';
+import { MessageDrop } from './drops.js';
 
 const App = bolt.default.App;
 
@@ -71,35 +72,33 @@ export class SlackClient extends EventEmitter {
     this.expressFullUrl = expressFullUrl;
     this.tub = tub;
   }
-  async createOnPlatform(model: string, tubsId: string): Promise<void> {
-    const localizedObject = await this.tub.getLocalizedObject({ model, tubsId });
-    if (typeof localizedObject.channelId === 'undefined') {
-      console.error(`failed to localize channelId for ${model} ${tubsId}`);
-      return;
-    }
-    console.log('creating on Slack:', model, tubsId, localizedObject);
+  async createOnPlatform(model: string, drop: MessageDrop): Promise<void> {
+    // const localizedObject = await this.tub.getLocalizedObject({ model, tubsId });
+    // if (typeof localizedObject.channelId === 'undefined') {
+    //   console.error(`failed to localize channelId for ${model} ${tubsId}`);
+    //   return;
+    // }
+    console.log('creating on Slack:', model, drop);
     // https://docs.slack.dev/reference/methods/chat.postMessage
     const created = await this.app.client.chat.postMessage({
-      channel: localizedObject.channelId,
-      text: localizedObject.text,
+      channel: drop.channelId,
+      text: drop.text,
       metadata: {
         event_type: "from_tubs",
         event_payload: {
-          tubsId,
+          foreignIds: drop.foreignIds,
         },
       },
-
-
-
-
     });
     if (created.ok) {
-      const localKey = this.tub.getIndexKey({ model: 'message', localId: created.ts });
-      this.tub.setLocalId(localKey, tubsId);
+      drop.id = created.ts;
+      // const localKey = this.tub.getIndexKey({ model: 'message', localId: created.ts });
+      // this.tub.setLocalId(localKey, tubsId);
+      this.tub.addObject({ model, drop });
     }
     console.log(created);
   }
-  async connect(port: number, equivalences: Equivalences): Promise<void> {
+  async connect(port: number): Promise<void> {
     console.log('Connecting to Slack...');
     this.tub.on('create', this.createOnPlatform.bind(this));
     this.app.command('/tubs-connect', async ({ command, ack }) => {
@@ -124,15 +123,16 @@ export class SlackClient extends EventEmitter {
     await this.app.start(port);
     this.on('message', async (message: IMessage) => {
       console.info('----------onMessage-----------');
-      const localId = this.tub.getIndexKey({ model: 'channel', localId: message.channel });
-      const tubsChannelId = await this.tub.getId(localId, equivalences[localId.join(':')], true);
-      const tubsMsgId = await this.tub.getId(this.tub.getIndexKey({ model: 'message', localId: message.ts }), undefined, true);
-      const messageToStore = {
-        id: tubsMsgId,
+      // const localId = this.tub.getIndexKey({ model: 'channel', localId: message.channel });
+      // const tubsChannelId = await this.tub.getId(localId, equivalences[localId.join(':')], true);
+      // const tubsMsgId = await this.tub.getId(this.tub.getIndexKey({ model: 'message', localId: message.ts }), undefined, true);
+      const drop = {
+        id: message.ts,
         text: message.text,
-        channel: tubsChannelId,
-      };
-      this.tub.setData(this.tub.getObjectKey({ model: 'message', tubsId: tubsMsgId }), messageToStore);
+        channelId: message.channel,
+        authorId: message.user,
+      } as MessageDrop;
+      this.tub.addObject({ model: 'message', drop });
       console.log(JSON.stringify(message, null, 2));
     });
   }  

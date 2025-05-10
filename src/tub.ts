@@ -1,10 +1,9 @@
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
-import { Repo, DocHandle } from '@automerge/automerge-repo';
-import { BroadcastChannelNetworkAdapter } from '@automerge/automerge-repo-network-broadcastchannel';
-// import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket";
-import { NodeFSStorageAdapter } from '@automerge/automerge-repo-storage-nodefs';
+import { DocHandle } from '@automerge/automerge-repo';
+import { getDocEntry, setDocEntry, createRepo } from './utils.js';
+import { MessageDrop } from './drops.js';
 
 // this is for virtual objects, that are reflected into local versions on multiple platforms.
 // it's a map from local ID in this tub to a single equivalent local ID in some other Tub.
@@ -12,87 +11,30 @@ import { NodeFSStorageAdapter } from '@automerge/automerge-repo-storage-nodefs';
 // joinedLocalId === localId.join(':')
 export type Equivalences = { [joinedLocalId: string]: string[] };
 
-export function setDocEntry(doc:{ [index: string]: any }, nesting: string[], value: any): void {
-    // console.log('setDocEntry', nesting, value);
-    return _setDocEntry(doc, JSON.parse(JSON.stringify(nesting)), value);
-}
-function _setDocEntry(doc:{ [index: string]: any }, nesting: string[], value: any): void {
-    // console.log('setDocEntry 1', doc, nesting, value);
-  if (nesting.length === 0) {
-    // console.log('setDocEntry 2', doc, nesting, value);
-    throw new Error('cannot set value of doc itself');
-  } else if (nesting.length === 1) {
-    // console.log('setDocEntry 3', doc, nesting, value);
-    doc[nesting[0]] = value;
-  } else {
-    // console.log('setDocEntry 4', doc, nesting, value);
-    const firstKey = nesting.shift();
-    if (typeof doc[firstKey] === 'undefined') {
-      // console.log('setDocEntry 5', doc, nesting, value);
-      doc[firstKey] = {};
-    }
-    // console.log('setDocEntry 6', doc, nesting, value);
-    _setDocEntry(doc[firstKey], nesting, value);
-  }
-  // console.log('setDocEntry 7', doc, nesting, value);
-}
-
-export function getDocEntry(doc:{ [index: string]: any }, nesting: string[]): any {
-  return _getDocEntry(doc, JSON.parse(JSON.stringify(nesting)));
-}
-function _getDocEntry(doc:{ [index: string]: any }, nesting: string[]): any {
-    // console.log('getDocEntry 1', doc, nesting);
-  if (nesting.length === 0) {
-    // console.log('getDocEntry 2', doc, nesting);
-    return;
-  } else if (nesting.length === 1) {
-    // console.log('getDocEntry 3', doc, nesting);
-    return doc[nesting[0]];
-  } else {
-    // console.log('getDocEntry 4', doc, nesting);
-    const firstKey = nesting.shift();
-    if (typeof doc[firstKey] === 'undefined') {
-      // console.log('getDocEntry 5', doc, nesting);
-      return;
-    }
-    // console.log('getDocEntry 6', doc, nesting);
-    return _getDocEntry(doc[firstKey], nesting);
-  }
-}
-
-function createRepo(): Repo {
-  return new Repo({
-    // network: [new BrowserWebSocketClientAdapter('wss://sync.automerge.org')],
-    network: [new BroadcastChannelNetworkAdapter()],
-    storage: new NodeFSStorageAdapter('./data'),
-  });
-}
-
 export class Tub extends EventEmitter {
   docHandle: DocHandle<unknown>;
   platform: string;
   creating: {
     [tubsId: string]: boolean
   } = {};
-  constructor(platform: string) {
+  equivalences: Equivalences;
+  constructor(platform: string, equivalences: Equivalences) {
     super();
     this.platform = platform;
+    this.equivalences = equivalences;
     // setInterval(() => {
     //   this.checkCoverage();
     // }, 10000);
   }
-  getIndexKey({ model, localId }: { model: string, localId: string}): string[] {
-    return [ 'index', this.platform, model, localId ];
-  }
-  getObjectKey({ model, tubsId }: { model: string, tubsId: string}): string[] {
+  private getObjectKey({ model, tubsId }: { model: string, tubsId: string}): string[] {
     return [ 'objects', model, tubsId ];
   }
   
-  checkIndexCoverage(): void {
+  private checkIndexCoverage(): void {
     // if there is an index for this platform that also exists on another platform,
     // emit an event to trigger a check if that foreignId is linked.
   }
-  checkObjectCoverage(): void {
+  private checkObjectCoverage(): void {
     // console.log(`checking object coverage on ${this.platform}`, this.docHandle.docSync());
     try {
       // console.log('in try');
@@ -120,7 +62,7 @@ export class Tub extends EventEmitter {
       console.error(e);
     }
   }
-  checkCoverage(): void {
+  private checkCoverage(): void {
     // console.log('--------------------');
     // console.log(this.platform);
     // console.log(this.docHandle.docSync());
@@ -134,7 +76,7 @@ export class Tub extends EventEmitter {
       this.checkObjectCoverage();
     }
   }
-  async setupDoc(): Promise<string> {
+  private async setupDoc(): Promise<string> {
     this.docHandle.on('change', () => {
       this.checkCoverage();
     });
@@ -158,7 +100,7 @@ export class Tub extends EventEmitter {
     this.docHandle = createRepo().find(docUrl as any);
     return this.setupDoc();
   }
-  setDictValue(key: string[], altKey: string[] | undefined, value: any): void {
+  private setDictValue(key: string[], altKey: string[] | undefined, value: any): void {
     // console.log('setDictValue', key, altKey, value);
     this.docHandle.change((d) => {
       setDocEntry(d, key, value);
@@ -170,7 +112,7 @@ export class Tub extends EventEmitter {
     // console.log(`this.docHandle.docSync() updated in ${this.platform}`, this.docHandle.docSync());
     return value;
   }
-  ensureCopied(existingKey: string[], otherKey?: string[]): any {
+  private ensureCopied(existingKey: string[], otherKey?: string[]): any {
     // console.log('ensureCopied', existingKey, otherKey);
     const entry = getDocEntry(this.docHandle.docSync(), existingKey);
     if (otherKey && typeof getDocEntry(this.docHandle.docSync(), otherKey) === 'undefined') {
@@ -178,7 +120,7 @@ export class Tub extends EventEmitter {
     }
     return entry;
   }
-  getDictValue(key: string[], altKey?: string[], mintIfMissing?: boolean): any {
+  private getDictValue(key: string[], altKey?: string[], mintIfMissing?: boolean): any {
     // console.log('getDictValue', key, altKey, mintIfMissing);
  
     if (getDocEntry(this.docHandle.docSync(), key)) {
@@ -192,10 +134,10 @@ export class Tub extends EventEmitter {
     }
     return undefined;
   }
-  getId(localId: string[], altId?: string[], mintIfMissing?: boolean): string {
+  private getId(localId: string[], altId?: string[], mintIfMissing?: boolean): string {
     return this.getDictValue(localId, altId, mintIfMissing);
   }
-  getLocalId({ model, tubsId, platform }: { model: string, tubsId: string, platform?: string }): string | undefined {
+  private getLocalId({ model, tubsId, platform }: { model: string, tubsId: string, platform?: string }): string | undefined {
     if (!platform) {
       platform = this.platform;
     }
@@ -214,7 +156,7 @@ export class Tub extends EventEmitter {
     }
     return undefined;
   }
-  getLocalizedObject({ model, tubsId }: { model: string, tubsId: string }): any {
+  private getLocalizedObject({ model, tubsId }: { model: string, tubsId: string }): any {
     const key = this.getObjectKey({ model, tubsId });
     const obj = this.getDictValue(key);
     // console.log('getLocalizedObject; starting from:', model, tubsId, key, obj);
@@ -246,11 +188,17 @@ export class Tub extends EventEmitter {
     console.log('returning obj', obj);
     return obj;
   }
-  setData(uuidSpec: string[], value: unknown): void {
+  private setData(uuidSpec: string[], value: unknown): void {
     return this.setDictValue(uuidSpec, undefined, value);
   }
-  setLocalId(indexKey: string[], tubsId: string): void {
+  private setLocalId(indexKey: string[], tubsId: string): void {
     this.setDictValue(indexKey, undefined, tubsId);
   }
+  addObject({ model, drop }: { model: string, drop: MessageDrop }): void {
+    console.log(`Adding ${model} drop`, drop);
+  }
+  // getNewObjects({ model }: { model: string }): any[] {
+
+  // }
 }
 
