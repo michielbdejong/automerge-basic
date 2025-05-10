@@ -4,7 +4,7 @@ export type DropInternal = {
     [platform: string]: string,
   },
   properties: {
-    [key: string]: any,
+    [key: string]: string | number | Date | boolean
   },
   relations: {
     [relationship: string]: { model: string, id: string },

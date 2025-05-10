@@ -1,8 +1,9 @@
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 import { EventEmitter } from 'node:events';
-import { randomUUID } from 'node:crypto';
+// import { randomUUID } from 'node:crypto';
 import { DocHandle } from '@automerge/automerge-repo';
-import { getDocEntry, setDocEntry, createRepo } from './utils.js';
+// import { NestedDoc, getDocEntry, setDocEntry, createRepo } from './utils.js';
+import { createRepo } from './utils.js';
 import { MessageDrop } from './drops.js';
 
 // this is for virtual objects, that are reflected into local versions on multiple platforms.
@@ -26,9 +27,9 @@ export class Tub extends EventEmitter {
     //   this.checkCoverage();
     // }, 10000);
   }
-  private getObjectKey({ model, tubsId }: { model: string, tubsId: string}): string[] {
-    return [ 'objects', model, tubsId ];
-  }
+  // private getObjectKey({ model, tubsId }: { model: string, tubsId: string}): string[] {
+  //   return [ 'objects', model, tubsId ];
+  // }
   
   private checkIndexCoverage(): void {
     // if there is an index for this platform that also exists on another platform,
@@ -100,43 +101,43 @@ export class Tub extends EventEmitter {
     this.docHandle = createRepo().find(docUrl as any);
     return this.setupDoc();
   }
-  private setDictValue(key: string[], altKey: string[] | undefined, value: any): void {
-    // console.log('setDictValue', key, altKey, value);
-    this.docHandle.change((d) => {
-      setDocEntry(d, key, value);
-      if (altKey) {
-       setDocEntry(d, altKey, value);
-      }
-      // console.log('doc changed inside callback!', d);
-    });
-    // console.log(`this.docHandle.docSync() updated in ${this.platform}`, this.docHandle.docSync());
-    return value;
-  }
-  private ensureCopied(existingKey: string[], otherKey?: string[]): any {
-    // console.log('ensureCopied', existingKey, otherKey);
-    const entry = getDocEntry(this.docHandle.docSync(), existingKey);
-    if (otherKey && typeof getDocEntry(this.docHandle.docSync(), otherKey) === 'undefined') {
-      this.setDictValue(otherKey, undefined, entry); 
-    }
-    return entry;
-  }
-  private getDictValue(key: string[], altKey?: string[], mintIfMissing?: boolean): any {
-    // console.log('getDictValue', key, altKey, mintIfMissing);
+  // private setDictValue(key: string[], altKey: string[] | undefined, value: any): void {
+  //   // console.log('setDictValue', key, altKey, value);
+  //   this.docHandle.change((d: NestedDoc) => {
+  //     setDocEntry(d, key, value);
+  //     if (altKey) {
+  //      setDocEntry(d, altKey, value);
+  //     }
+  //     // console.log('doc changed inside callback!', d);
+  //   });
+  //   // console.log(`this.docHandle.docSync() updated in ${this.platform}`, this.docHandle.docSync());
+  //   return value;
+  // }
+  // private ensureCopied(existingKey: string[], otherKey?: string[]): any {
+  //   // console.log('ensureCopied', existingKey, otherKey);
+  //   const entry = getDocEntry(this.docHandle.docSync(), existingKey);
+  //   if (otherKey && typeof getDocEntry(this.docHandle.docSync(), otherKey) === 'undefined') {
+  //     this.setDictValue(otherKey, undefined, entry); 
+  //   }
+  //   return entry;
+  // }
+  // private getDictValue(key: string[], altKey?: string[], mintIfMissing?: boolean): any {
+  //   // console.log('getDictValue', key, altKey, mintIfMissing);
  
-    if (getDocEntry(this.docHandle.docSync(), key)) {
-      return this.ensureCopied(key, altKey);
-    }
-    if (altKey && getDocEntry(this.docHandle.docSync(), altKey)) {
-      return this.ensureCopied(altKey, key);
-    }
-    if (mintIfMissing) {
-      return this.setDictValue(key, altKey, randomUUID());
-    }
-    return undefined;
-  }
-  private getId(localId: string[], altId?: string[], mintIfMissing?: boolean): string {
-    return this.getDictValue(localId, altId, mintIfMissing);
-  }
+  //   if (getDocEntry(this.docHandle.docSync(), key)) {
+  //     return this.ensureCopied(key, altKey);
+  //   }
+  //   if (altKey && getDocEntry(this.docHandle.docSync(), altKey)) {
+  //     return this.ensureCopied(altKey, key);
+  //   }
+  //   if (mintIfMissing) {
+  //     return this.setDictValue(key, altKey, randomUUID());
+  //   }
+  //   return undefined;
+  // }
+  // private getId(localId: string[], altId?: string[], mintIfMissing?: boolean): string {
+  //   return this.getDictValue(localId, altId, mintIfMissing);
+  // }
   private getLocalId({ model, tubsId, platform }: { model: string, tubsId: string, platform?: string }): string | undefined {
     if (!platform) {
       platform = this.platform;
@@ -156,44 +157,44 @@ export class Tub extends EventEmitter {
     }
     return undefined;
   }
-  private getLocalizedObject({ model, tubsId }: { model: string, tubsId: string }): any {
-    const key = this.getObjectKey({ model, tubsId });
-    const obj = this.getDictValue(key);
-    // console.log('getLocalizedObject; starting from:', model, tubsId, key, obj);
-    // for instance if this is a chat message from Solid, it will look like this:
-    // {
-    //   id: tubsMsgId,
-    //   text: entry.text,
-    //   date: entry.date,
-    //   authorId: tubsAuthorId,
-    //   channelId: tubsChannelId,
-    // }
-    Object.keys(obj).forEach(key => {
-      // console.log('considering key', key, obj[key]);
-      if (key === 'id') {
-        obj[key] = this.getLocalId({ model, tubsId: obj[key] });
-        // if (typeof obj[key] === 'undefined') {
-        //   throw new Error(`could not localize ${key} for ${model} from tubsId value ${tubsId}`);
-        // }
-        // console.log('updated', key, obj[key]);
-      } else if (key.endsWith('Id')) {
-        const relatedModel = key.substring(0, key.length - `Id`.length); 
-        obj[key] = this.getLocalId({ model: relatedModel, tubsId: obj[key] });
-        // if (typeof obj[key] === 'undefined') {
-        //   throw new Error(`could not localize ${key} for ${model} from ${relatedModel} tubsId value ${tubsId}`);
-        // }
-        // console.log('updated', key, obj[key]);
-      }
-    });
-    console.log('returning obj', obj);
-    return obj;
-  }
-  private setData(uuidSpec: string[], value: unknown): void {
-    return this.setDictValue(uuidSpec, undefined, value);
-  }
-  private setLocalId(indexKey: string[], tubsId: string): void {
-    this.setDictValue(indexKey, undefined, tubsId);
-  }
+  // private getLocalizedObject({ model, tubsId }: { model: string, tubsId: string }): any {
+  //   const key = this.getObjectKey({ model, tubsId });
+  //   const obj = this.getDictValue(key);
+  //   // console.log('getLocalizedObject; starting from:', model, tubsId, key, obj);
+  //   // for instance if this is a chat message from Solid, it will look like this:
+  //   // {
+  //   //   id: tubsMsgId,
+  //   //   text: entry.text,
+  //   //   date: entry.date,
+  //   //   authorId: tubsAuthorId,
+  //   //   channelId: tubsChannelId,
+  //   // }
+  //   Object.keys(obj).forEach(key => {
+  //     // console.log('considering key', key, obj[key]);
+  //     if (key === 'id') {
+  //       obj[key] = this.getLocalId({ model, tubsId: obj[key] });
+  //       // if (typeof obj[key] === 'undefined') {
+  //       //   throw new Error(`could not localize ${key} for ${model} from tubsId value ${tubsId}`);
+  //       // }
+  //       // console.log('updated', key, obj[key]);
+  //     } else if (key.endsWith('Id')) {
+  //       const relatedModel = key.substring(0, key.length - `Id`.length); 
+  //       obj[key] = this.getLocalId({ model: relatedModel, tubsId: obj[key] });
+  //       // if (typeof obj[key] === 'undefined') {
+  //       //   throw new Error(`could not localize ${key} for ${model} from ${relatedModel} tubsId value ${tubsId}`);
+  //       // }
+  //       // console.log('updated', key, obj[key]);
+  //     }
+  //   });
+  //   console.log('returning obj', obj);
+  //   return obj;
+  // }
+  // private setData(uuidSpec: string[], value: unknown): void {
+  //   return this.setDictValue(uuidSpec, undefined, value);
+  // }
+  // private setLocalId(indexKey: string[], tubsId: string): void {
+  //   this.setDictValue(indexKey, undefined, tubsId);
+  // }
   addObject({ model, drop }: { model: string, drop: MessageDrop }): void {
     console.log(`Adding ${model} drop`, drop);
   }

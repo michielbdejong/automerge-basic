@@ -4,15 +4,17 @@ import { NodeFSStorageAdapter } from '@automerge/automerge-repo-storage-nodefs';
 import { Repo } from '@automerge/automerge-repo';
 import { DropInternal } from './drops.js';
 
+export type NestedDoc = { [index: string]: NestedDoc } | { [index: string]: DropInternal };
+
 export function getIndexKey({ platform, model, localId }: { platform: string, model: string, localId: string}): string[] {
   return [ 'index', platform, model, localId ];
 }
 
-export function setDocEntry(doc:{ [index: string]: any }, nesting: string[], value: DropInternal): void {
+export function setDocEntry(doc: NestedDoc, nesting: string[], value: DropInternal): void {
     // console.log('setDocEntry', nesting, value);
     return _setDocEntry(doc, JSON.parse(JSON.stringify(nesting)), value);
 }
-function _setDocEntry(doc:{ [index: string]: any }, nesting: string[], value: DropInternal): void {
+function _setDocEntry(doc: NestedDoc | DropInternal, nesting: string[], value: DropInternal): void {
     // console.log('setDocEntry 1', doc, nesting, value);
   if (nesting.length === 0) {
     // console.log('setDocEntry 2', doc, nesting, value);
@@ -33,10 +35,10 @@ function _setDocEntry(doc:{ [index: string]: any }, nesting: string[], value: Dr
   // console.log('setDocEntry 7', doc, nesting, value);
 }
 
-export function getDocEntry(doc:{ [index: string]: any }, nesting: string[]): DropInternal | undefined {
+export function getDocEntry(doc: NestedDoc, nesting: string[]): DropInternal | undefined {
   return _getDocEntry(doc, JSON.parse(JSON.stringify(nesting)));
 }
-function _getDocEntry(doc:{ [index: string]: any }, nesting: string[]): DropInternal | undefined {
+function _getDocEntry(doc: NestedDoc | DropInternal, nesting: string[]): DropInternal | undefined {
     // console.log('getDocEntry 1', doc, nesting);
   if (nesting.length === 0) {
     // console.log('getDocEntry 2', doc, nesting);
