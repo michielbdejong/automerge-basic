@@ -91,7 +91,7 @@ export class SlackClient extends EventEmitter {
       },
     });
     if (created.ok) {
-      drop.id = created.ts;
+      drop.localId = created.ts;
       // const localKey = this.tub.getIndexKey({ model: 'message', localId: created.ts });
       // this.tub.setLocalId(localKey, tubsId);
       this.tub.addObject({ model, drop });
@@ -127,7 +127,7 @@ export class SlackClient extends EventEmitter {
       // const tubsChannelId = await this.tub.getId(localId, equivalences[localId.join(':')], true);
       // const tubsMsgId = await this.tub.getId(this.tub.getIndexKey({ model: 'message', localId: message.ts }), undefined, true);
       const drop = {
-        id: message.ts,
+        localId: message.ts,
         text: message.text,
         channelId: message.channel,
         authorId: message.user,

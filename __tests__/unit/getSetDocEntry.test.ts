@@ -7,8 +7,8 @@ describe('get/setDocEntry', () => {
 
   it('can set and get', async () => {
     const drop = {
-      id: 'test',
-      identifiers: {
+      tubsId: 'test',
+      platformIds: {
       },
       properties: {
       },

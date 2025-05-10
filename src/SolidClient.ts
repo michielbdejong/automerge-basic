@@ -102,6 +102,7 @@ export class SolidClient {
   async listen(): Promise<void> {
     this.tub.on('create', this.createOnPlatform.bind(this));
     const topic = process.env.CHANNEL_IN_SOLID;
+    this.tub.addObject({ model: 'channel', drop: { localId: topic, foreignIds: {} }});
     const todayDoc = this.getTodayDoc(topic);
     // FIXME: discover this URL from the response header link:
     const streamingUrl = `https://solidcommunity.net/.notifications/StreamingHTTPChannel2023/${encodeURIComponent(todayDoc)}`;
@@ -143,7 +144,7 @@ export class SolidClient {
         // console.log('getting Id for author', authorKey);
         // const tubsAuthorId = this.tub.getId(authorKey, undefined, true);
         const drop = {
-          id: entry.uri,
+          localId: entry.uri,
           foreignIds: {},
           text: entry.text,
           date: entry.date,

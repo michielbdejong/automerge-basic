@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { createServer, IncomingMessage, ServerResponse } from 'http';
-import { Tub } from './tub.js';
-import { getIndexKey } from './utils.js';
+import { Tub, Equivalences } from './tub.js';
+// import { getIndexKey } from './utils.js';
 import { SlackClient } from './SlackClient.js';
 import { SolidClient } from './SolidClient.js';
 
@@ -27,30 +27,40 @@ async function runSlack(slackTub: Tub): Promise<void> {
   await slack.connect(8080);
 }
 
-async function createTubs(names: string[]): Promise<Tub[]> {
+async function createTubs(names: string[], equivalencesMaps: Equivalences[]): Promise<Tub[]> {
   if (names.length === 0) {
     return [];
   }
-  // FIXME: generalize this
-  const channelIds = [
-    getIndexKey({ platform: names[0], model: 'channel', localId: process.env.CHANNEL_IN_SLACK }),
-   getIndexKey({ platform: names[1], model: 'channel', localId: process.env.CHANNEL_IN_SOLID }),
-  ];
 
   const tubs = [
-    new Tub(names[0], { [channelIds[0].join(':')]: channelIds[1] }),
+    new Tub(names[0], equivalencesMaps[0]),
   ];
   const docUrl = await tubs[0].createDoc();
 
   for (let i=1; i < names.length; i++) {
-    tubs[i] = new Tub(names[i], { [channelIds[i].join(':')]: channelIds[0] });
+    tubs[i] = new Tub(names[i], equivalencesMaps[i]);
     await tubs[i].setDoc(docUrl);
   }
   return tubs;
 }
 
 async function run(): Promise<void> {
-  const [ slackTub, solidTub ] = await createTubs(['slack', 'solid']);
+  const [ slackTub, solidTub ] = await createTubs(['slack', 'solid'], [
+    {
+      channel: {
+        [process.env.CHANNEL_IN_SLACK]: {
+          solid: process.env.CHANNEL_IN_SOLID 
+        }
+      }
+    },
+    {
+      channel: {
+        [process.env.CHANNEL_IN_SOLID]: {
+          solid: process.env.CHANNEL_IN_SLACK
+        }
+      }
+    },
+  ]);
   await Promise.all([
     runSolid(solidTub),
     runSlack(slackTub),

@@ -2,9 +2,9 @@ import { BroadcastChannelNetworkAdapter } from '@automerge/automerge-repo-networ
 // import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket";
 import { NodeFSStorageAdapter } from '@automerge/automerge-repo-storage-nodefs';
 import { Repo } from '@automerge/automerge-repo';
-import { DropInternal } from './drops.js';
+import { InternalDrop } from './drops.js';
 
-export type NestedDoc = { [index: string]: NestedDoc } | { [index: string]: DropInternal };
+export type NestedDoc = { [index: string]: NestedDoc } | { [index: string]: InternalDrop };
 
 export function getIndexKey({ platform, model, localId }: { platform: string, model: string, localId: string}): string[] {
   return [ 'index', platform, model, localId ];
@@ -13,11 +13,11 @@ export function getIndexKey({ platform, model, localId }: { platform: string, mo
 export function getObjectKey({ model, tubsId }: { model: string, tubsId: string}): string[] {
   return [ 'objects', model, tubsId ];
 }
-export function setDocEntry(doc: NestedDoc, nesting: string[], value: DropInternal): void {
+export function setDocEntry(doc: NestedDoc, nesting: string[], value: InternalDrop): void {
     // console.log('setDocEntry', nesting, value);
     return _setDocEntry(doc, JSON.parse(JSON.stringify(nesting)), value);
 }
-function _setDocEntry(doc: NestedDoc | DropInternal, nesting: string[], value: DropInternal): void {
+function _setDocEntry(doc: NestedDoc | InternalDrop, nesting: string[], value: InternalDrop): void {
     // console.log('setDocEntry 1', doc, nesting, value);
   if (nesting.length === 0) {
     // console.log('setDocEntry 2', doc, nesting, value);
@@ -38,10 +38,10 @@ function _setDocEntry(doc: NestedDoc | DropInternal, nesting: string[], value: D
   // console.log('setDocEntry 7', doc, nesting, value);
 }
 
-export function getDocEntry(doc: NestedDoc, nesting: string[]): DropInternal | undefined {
+export function getDocEntry(doc: NestedDoc, nesting: string[]): InternalDrop | undefined {
   return _getDocEntry(doc, JSON.parse(JSON.stringify(nesting)));
 }
-function _getDocEntry(doc: NestedDoc | DropInternal, nesting: string[]): DropInternal | undefined {
+function _getDocEntry(doc: NestedDoc | InternalDrop, nesting: string[]): InternalDrop | undefined {
     // console.log('getDocEntry 1', doc, nesting);
   if (nesting.length === 0) {
     // console.log('getDocEntry 2', doc, nesting);
