@@ -3,8 +3,8 @@ import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import { DocHandle } from '@automerge/automerge-repo';
 import { NestedDoc, getDocEntry, setDocEntry, createRepo, getIndexKey, getObjectKey } from './utils.js';
-// import { LocalizedDrop, InternalDrop, localizedDropToInternal, internalDropToLocalized } from './drops.js';
-import { LocalizedDrop, localizedDropToInternal } from './drops.js';
+import { LocalizedDrop, InternalDrop, localizedDropToInternal, internalDropToLocalized } from './drops.js';
+// import { LocalizedDrop, localizedDropToInternal } from './drops.js';
 
 // example, depending on .env, the Slack Tub could have this Equivalences object:
 // {
@@ -62,8 +62,14 @@ export class Tub extends EventEmitter {
               return;
             }
             this.creating[tubsId] = true;
-            const drop = this.getLocalizedObject({ model: 'message', tubsId });
-            this.emit('create', model, drop);
+            const objectKey = getObjectKey({ model, tubsId });
+            const internalDrop = this.getDictValue(objectKey, undefined, false);
+            const localizedDrop = internalDropToLocalized(this.platform, internalDrop, (model: string, tubsId: string): string => {
+              const objectKey = getObjectKey({ model, tubsId });
+              const object = this.getDictValue(objectKey, undefined, false);
+              return (object as InternalDrop).platformIds[this.platform];
+            });
+            this.emit('create', model, localizedDrop);
           }
         });
       });
@@ -161,38 +167,6 @@ export class Tub extends EventEmitter {
       }
     }
     return undefined;
-  }
-  private getLocalizedObject({ model, tubsId }: { model: string, tubsId: string }): any {
-    const key = getObjectKey({ model, tubsId });
-    const obj = this.getDictValue(key);
-    // console.log('getLocalizedObject; starting from:', model, tubsId, key, obj);
-    // for instance if this is a chat message from Solid, it will look like this:
-    // {
-    //   id: tubsMsgId,
-    //   text: entry.text,
-    //   date: entry.date,
-    //   authorId: tubsAuthorId,
-    //   channelId: tubsChannelId,
-    // }
-    Object.keys(obj).forEach(key => {
-      // console.log('considering key', key, obj[key]);
-      if (key === 'id') {
-        obj[key] = this.getLocalId({ model, tubsId: obj[key] });
-        // if (typeof obj[key] === 'undefined') {
-        //   throw new Error(`could not localize ${key} for ${model} from tubsId value ${tubsId}`);
-        // }
-        // console.log('updated', key, obj[key]);
-      } else if (key.endsWith('Id')) {
-        const relatedModel = key.substring(0, key.length - `Id`.length); 
-        obj[key] = this.getLocalId({ model: relatedModel, tubsId: obj[key] });
-        // if (typeof obj[key] === 'undefined') {
-        //   throw new Error(`could not localize ${key} for ${model} from ${relatedModel} tubsId value ${tubsId}`);
-        // }
-        // console.log('updated', key, obj[key]);
-      }
-    });
-    console.log('returning obj', obj);
-    return obj;
   }
   addObject({ model, drop }: { model: string, drop: LocalizedDrop }): void {
     const internalDrop = localizedDropToInternal(this.platform, drop, (model: string, localId: string): string => {

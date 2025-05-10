@@ -3,6 +3,7 @@ export type InternalDrop = {
   platformIds: { // identifiers on any platforms, not tubs
     [platform: string]: string,
   },
+  model: string,
   properties: {
     [key: string]: string | number | Date | boolean
   },
@@ -15,15 +16,17 @@ export type LocalizedDrop = {
   localId: string | undefined,
   foreignIds: { // identifiers on any platforms, including tubs, but not the local one
     [platform: string]: string,
-  }
+  },
+  model: string,
 };
 
 export function localizedDropToInternal(fromPlatform: string, from: LocalizedDrop, identifierToInternal: (model: string, localId: string) => string): InternalDrop {
   const ret: InternalDrop = {
-    tubsId: from.foreignIds.tubs,
+    tubsId: from.foreignIds.tubs || identifierToInternal(from.model, from.localId),
     platformIds: {},
     properties: {},
     relations: {},
+    model: from.model,
   };
   Object.keys(from).forEach(field => {
     if (field === 'localId') {
@@ -44,10 +47,11 @@ export function localizedDropToInternal(fromPlatform: string, from: LocalizedDro
   return ret;
 }
 
-export function internalDropToLocalized(toPlatform: string, from: InternalDrop, identifierToLocal: (model: string, internal: string) => string): LocalizedDrop {
+export function internalDropToLocalized(toPlatform: string, from: InternalDrop, identifierToLocal: (model: string, tubsId: string) => string): LocalizedDrop {
   const ret: LocalizedDrop = {
-    localId: from.platformIds[toPlatform],
+    localId: from.platformIds[toPlatform] || identifierToLocal(from.model, from.tubsId),
     foreignIds: from.platformIds,
+    model: from.model,
   };
   delete ret.foreignIds[toPlatform];
   ret.foreignIds.tubs = from.tubsId;

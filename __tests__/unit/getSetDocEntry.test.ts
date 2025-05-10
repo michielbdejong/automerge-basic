@@ -8,6 +8,7 @@ describe('get/setDocEntry', () => {
   it('can set and get', async () => {
     const drop = {
       tubsId: 'test',
+      model: 'person',
       platformIds: {
       },
       properties: {
