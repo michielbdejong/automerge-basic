@@ -1,12 +1,12 @@
 import { Agent } from 'undici';
 import { v7 } from "css-authn";
-import {Fetcher, graph, UpdateManager, AutoInitOptions, IndexedFormula } from "rdflib";
+import { Fetcher, graph, UpdateManager, AutoInitOptions, IndexedFormula, sym, Namespace, isNamedNode } from "rdflib";
 // import { executeUpdate } from "@solid-data-modules/rdflib-utils";
 import ChatsModuleRdfLib, { ChatsModule } from "@solid-data-modules/chats-rdflib";
 import { Tub } from "./tub.js";
 import { MessageDrop } from "./drops.js";
 
-// const owl = Namespace("http://www.w3.org/2002/07/owl#");
+const owl = Namespace("http://www.w3.org/2002/07/owl#");
 
 
 // setGlobalDispatcher(new Agent({bodyTimeout: 0}));
@@ -142,23 +142,27 @@ export class SolidClient {
         // const authorKey = this.tub.getIndexKey({ model: 'author', localId: entry.authorWebId});
         // console.log('getting Id for author', authorKey);
         // const tubsAuthorId = this.tub.getId(authorKey, undefined, true);
-        // const slackIdNode = this.store.any(
-        //   sym(entry.uri),
-        //   owl('sameAs'),
-        //   null,
-        //   sym(entry.uri).doc(),
-        // );
-        // FIXME: this creates a hard link between the SolidClient and the SlackClient, should generalize this:
-        // if (isNamedNode(slackIdNode) && slackIdNode.value.startsWith('https://tubsproject.org/id/slack/message/')) {
-        //   this.tub.setLocalId(['index', 'slack', 'message', slackIdNode.value.substring('https://tubsproject.org/id/slack/message/'.length)], tubsMsgId);
-        // }
         const drop = {
           id: entry.uri,
+          foreignIds: {},
           text: entry.text,
           date: entry.date,
           authorId: entry.authorWebId,
           channelId: topic,
         } as MessageDrop;
+        const slackIdNode = this.store.any(
+          sym(entry.uri),
+          owl('sameAs'),
+          null,
+          sym(entry.uri).doc(),
+        );
+        if (isNamedNode(slackIdNode) && slackIdNode.value.startsWith('https://tubsproject.org/id/')) {
+          const parts = slackIdNode.value.split('/');
+          // `https://tubsproject.org/id/${otherPlatform}/message/bla`
+          //    0   1   2             3        4            5     6
+          const otherPlatform = parts[4];
+          drop.foreignIds[otherPlatform] = slackIdNode.value.substring(`https://tubsproject.org/id/${otherPlatform}/message/`.length);
+        }
         if (typeof drop.channelId === 'string') {
           // console.log('setting message object', tubsMsgId, obj);
           this.tub.addObject({ model: 'message', drop });

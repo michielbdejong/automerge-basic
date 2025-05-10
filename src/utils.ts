@@ -10,6 +10,9 @@ export function getIndexKey({ platform, model, localId }: { platform: string, mo
   return [ 'index', platform, model, localId ];
 }
 
+export function getObjectKey({ model, tubsId }: { model: string, tubsId: string}): string[] {
+  return [ 'objects', model, tubsId ];
+}
 export function setDocEntry(doc: NestedDoc, nesting: string[], value: DropInternal): void {
     // console.log('setDocEntry', nesting, value);
     return _setDocEntry(doc, JSON.parse(JSON.stringify(nesting)), value);

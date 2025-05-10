@@ -1,9 +1,9 @@
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 import { EventEmitter } from 'node:events';
-// import { randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { DocHandle } from '@automerge/automerge-repo';
+import { NestedDoc, setDocEntry, createRepo, getIndexKey, getObjectKey } from './utils.js';
 // import { NestedDoc, getDocEntry, setDocEntry, createRepo } from './utils.js';
-import { createRepo } from './utils.js';
 import { MessageDrop } from './drops.js';
 
 // this is for virtual objects, that are reflected into local versions on multiple platforms.
@@ -27,9 +27,6 @@ export class Tub extends EventEmitter {
     //   this.checkCoverage();
     // }, 10000);
   }
-  // private getObjectKey({ model, tubsId }: { model: string, tubsId: string}): string[] {
-  //   return [ 'objects', model, tubsId ];
-  // }
   
   private checkIndexCoverage(): void {
     // if there is an index for this platform that also exists on another platform,
@@ -101,18 +98,18 @@ export class Tub extends EventEmitter {
     this.docHandle = createRepo().find(docUrl as any);
     return this.setupDoc();
   }
-  // private setDictValue(key: string[], altKey: string[] | undefined, value: any): void {
-  //   // console.log('setDictValue', key, altKey, value);
-  //   this.docHandle.change((d: NestedDoc) => {
-  //     setDocEntry(d, key, value);
-  //     if (altKey) {
-  //      setDocEntry(d, altKey, value);
-  //     }
-  //     // console.log('doc changed inside callback!', d);
-  //   });
-  //   // console.log(`this.docHandle.docSync() updated in ${this.platform}`, this.docHandle.docSync());
-  //   return value;
-  // }
+  private setDictValue(key: string[], altKey: string[] | undefined, value: any): void {
+    // console.log('setDictValue', key, altKey, value);
+    this.docHandle.change((d: NestedDoc) => {
+      setDocEntry(d, key, value);
+      if (altKey) {
+       setDocEntry(d, altKey, value);
+      }
+      // console.log('doc changed inside callback!', d);
+    });
+    // console.log(`this.docHandle.docSync() updated in ${this.platform}`, this.docHandle.docSync());
+    return value;
+  }
   // private ensureCopied(existingKey: string[], otherKey?: string[]): any {
   //   // console.log('ensureCopied', existingKey, otherKey);
   //   const entry = getDocEntry(this.docHandle.docSync(), existingKey);
@@ -143,7 +140,7 @@ export class Tub extends EventEmitter {
       platform = this.platform;
     }
     // console.log(`checking type of doc['index'][${platform}][${model}]:`, this.docHandle.docSync());
-    if (typeof this.docHandle.docSync()['index'][platform][model] === 'object') {
+    if ((typeof this.docHandle.docSync()['index'] === 'object') && (typeof this.docHandle.docSync()['index'][platform] === 'object') && (typeof this.docHandle.docSync()['index'][platform][model] === 'object')) {
       // console.log(`Getting ${model} ids for ${platform}`);
       const localIds = Object.keys(this.docHandle.docSync()['index'][platform][model]);
       // console.log(`Searching through`, localIds);
@@ -197,6 +194,14 @@ export class Tub extends EventEmitter {
   // }
   addObject({ model, drop }: { model: string, drop: MessageDrop }): void {
     console.log(`Adding ${model} drop`, drop);
+    if (typeof drop.foreignIds['tubs'] === 'undefined') {
+      drop.foreignIds['tubs'] = randomUUID();
+    }
+    const tubsId = drop.foreignIds['tubs'];
+    const indexKey = getIndexKey({ platform: this.platform, model, localId: drop.id });
+    this.setDictValue(indexKey, undefined, tubsId);
+    const objectKey = getObjectKey({ model, tubsId });
+    this.setDictValue(objectKey, undefined, drop);
   }
   // getNewObjects({ model }: { model: string }): any[] {
 
