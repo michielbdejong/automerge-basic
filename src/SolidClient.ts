@@ -32,7 +32,7 @@ export class SolidClient {
       provider: process.env.SOLID_SERVER,
     });
     this.fetch = (...args): Promise<Response> => {
-      console.log('fetching!', args[0]);
+      // console.log('fetching!', args[0]);
       return authenticatedFetch.apply(this, args);
     };
     this.initSolidDataModule();
@@ -81,7 +81,7 @@ export class SolidClient {
         ]);
       });
       await Promise.all(promises);
-
+      console.log('Created on Solid as:', drop.localId);
       this.tub.addObject(drop); // writing back the localId that was minted
     }
     // console.log(`added message to Solid chat`, messageUri);
@@ -161,7 +161,7 @@ export class SolidClient {
       name: string,
       latestMessages: { uri: string, text: string, date: Date, authorWebId: string }[],
     } = await this.module.readChat(process.env.CHANNEL_IN_SOLID);
-    console.log(latestMessages);
+    // console.log(latestMessages);
     await Promise.all(latestMessages.map(async (entry) => {
       const [ channelDrop, authorDrop, messageDrop ] = this.entryToDrops(entry);
       if (typeof messageDrop.channelId !== 'string') {
@@ -187,11 +187,12 @@ export class SolidClient {
     // console.log('Setting up stream listener');
     const textStream = res.body.pipeThrough(new TextDecoderStream());
     // let doneOne = false;
-    for await (const notificationText of textStream as unknown as {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for await (const _notificationText of textStream as unknown as {
       [Symbol.asyncIterator](): AsyncIterableIterator<string>;
     }) {
-      console.log(notificationText);
-      console.log('fetching chat!');
+      // console.log(notificationText);
+      // console.log('fetching chat!');
       this.fetchChat();
     }
     // console.log('Outside stream listener\'s for-await loop');

@@ -106,10 +106,11 @@ export class SlackClient extends EventEmitter {
       drop.localId = created.ts;
       // const localKey = this.tub.getIndexKey({ model: 'message', localId: created.ts });
       // this.tub.setLocalId(localKey, tubsId);
-      console.log('writing back localId from Slack creation', drop);
+      // console.log('writing back localId from Slack creation', drop);
+      console.log('Stored on Slack as:', drop.localId);
       this.tub.addObject(drop);
     }
-    console.log(created);
+    // console.log(created);
   }
   async connect(port: number): Promise<void> {
     console.log('Connecting to Slack...');
@@ -135,7 +136,7 @@ export class SlackClient extends EventEmitter {
     });
     await this.app.start(port);
     this.on('message', async (message: IMessage) => {
-      console.info('----------onMessage-----------');
+      // console.info('----------onMessage-----------');
       // const localId = this.tub.getIndexKey({ model: 'channel', localId: message.channel });
       // const tubsChannelId = await this.tub.getId(localId, equivalences[localId.join(':')], true);
       // const tubsMsgId = await this.tub.getId(this.tub.getIndexKey({ model: 'message', localId: message.ts }), undefined, true);
@@ -158,8 +159,8 @@ export class SlackClient extends EventEmitter {
         channelId: message.channel,
         authorId: message.user,
       };
+      console.log('Slack incoming:', messageDrop.text);
       this.tub.addObjects([ channelDrop, authorDrop, messageDrop ]);
-      console.log(JSON.stringify(message, null, 2));
     });
   }  
 }
