@@ -73,6 +73,15 @@ export class SlackClient extends EventEmitter {
     this.tub = tub;
   }
   async createOnPlatform(drop: MessageDrop): Promise<void> {
+    // const existing = await this.app.client.search.messages({
+    //   metadata: {
+    //     event_type: "from_tubs",
+    //     event_payload: {
+    //       foreignIds: drop.foreignIds,
+    //     },
+    //   },
+    // });
+    // console.log(existing);
     // const localizedObject = await this.tub.getLocalizedObject({ model, tubsId });
     // if (typeof localizedObject.channelId === 'undefined') {
     //   console.error(`failed to localize channelId for ${model} ${tubsId}`);
@@ -126,13 +135,15 @@ export class SlackClient extends EventEmitter {
       // const localId = this.tub.getIndexKey({ model: 'channel', localId: message.channel });
       // const tubsChannelId = await this.tub.getId(localId, equivalences[localId.join(':')], true);
       // const tubsMsgId = await this.tub.getId(this.tub.getIndexKey({ model: 'message', localId: message.ts }), undefined, true);
-      const drop = {
+      const drop: MessageDrop = {
         localId: message.ts,
         model: 'message',
+        foreignIds: {},
+        date: new Date(parseFloat(message.ts) * 1000),
         text: message.text,
         channelId: message.channel,
         authorId: message.user,
-      } as MessageDrop;
+      };
       this.tub.addObject(drop);
       console.log(JSON.stringify(message, null, 2));
     });

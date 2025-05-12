@@ -23,7 +23,7 @@ export type LocalizedDrop = {
 
 export function localizedDropToInternal(fromPlatform: string, from: LocalizedDrop, identifierToInternal: (model: string, localId: string) => string): InternalDrop {
   const ret: InternalDrop = {
-    tubsId: from.foreignIds.tubs || identifierToInternal(from.model, from.localId),
+    tubsId: from.foreignIds['tubs'] || identifierToInternal(from.model, from.localId),
     platformIds: {},
     properties: {},
     relations: {},

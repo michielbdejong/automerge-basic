@@ -24,6 +24,7 @@ export class Tub extends EventEmitter {
     [tubsId: string]: boolean
   } = {};
   equivalences: LocalEquivalences;
+  timer: ReturnType<typeof setTimeout> | undefined;
   constructor(platform: string, equivalences: Equivalences) {
     super();
     this.platform = platform;
@@ -45,7 +46,7 @@ export class Tub extends EventEmitter {
     return (object ? (object as InternalDrop).platformIds[this.platform] : undefined);
   }
   private checkObjectCoverage(): void {
-    // console.log(`checking object coverage on ${this.platform}`, this.docHandle.docSync());
+    console.log(`checking object coverage on ${this.platform}`, JSON.stringify(this.docHandle.docSync(), null, 2));
     try {
       // console.log('in try');
       const models = Object.keys(this.docHandle.docSync()['objects']);
@@ -76,6 +77,9 @@ export class Tub extends EventEmitter {
               const indexKey = getIndexKey({ platform: this.platform, model: localizedDrop.model, localId: localizedDrop.localId });
               // console.log('setting dict value', indexKey, tubsId);
               this.setDictValue(indexKey, undefined, tubsId);
+              Object.keys(localizedDrop.foreignIds).forEach(platform => {
+                this.emit('foreign-id-added', localizedDrop.localId, platform, localizedDrop.foreignIds[platform]);
+              });
             }
           }
         });
@@ -101,6 +105,12 @@ export class Tub extends EventEmitter {
   private async setupDoc(): Promise<string> {
     // console.log('registering change handler');
     this.docHandle.on('change', () => {
+      if (typeof this.timer === 'undefined') {
+        this.timer = setTimeout(() => {
+          this.checkCoverage();
+          this.timer = undefined;
+        }, 1000);
+      }
       // console.log('change handler fired');
       this.checkCoverage();
     });
