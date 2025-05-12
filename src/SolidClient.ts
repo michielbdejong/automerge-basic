@@ -20,8 +20,6 @@ export class SolidClient {
   tub: Tub;
   constructor(tub: Tub) {
     this.tub = tub;
-    this.store = graph();
-    this.updater = new UpdateManager(this.store);
     setInterval(() => {
       this.fetchChat();
     }, 5000);
@@ -34,22 +32,10 @@ export class SolidClient {
       provider: process.env.SOLID_SERVER,
     });
     this.fetch = (...args): Promise<Response> => {
-      console.log('fetching!', args);
+      console.log('fetching!', args[0]);
       return authenticatedFetch.apply(this, args);
     };
-    // 1️⃣ create rdflib store, fetcher and updater as usual
-    this.fetcher = new Fetcher(
-      this.store,
-      { fetch: this.fetch } as AutoInitOptions,
-    );
-
-    // 2️⃣ create the chats module
-    this.module = new ChatsModuleRdfLib({
-      store: this.store,
-      fetcher: this.fetcher,
-      updater: this.updater,
-    });
-    console.log(`Connnected to Solid ${process.env.SOLID_SERVER}`);
+    this.initSolidDataModule();
   }
 
   async createChat(containerUri: string, name: string): Promise<string> {
@@ -148,17 +134,40 @@ export class SolidClient {
     // console.log('entryToDrops', entry, channelDrop, authorDrop, messageDrop);
     return [ channelDrop, authorDrop, messageDrop ];
   }
+  initSolidDataModule(): void {
+    this.store = graph();
+    this.updater = new UpdateManager(this.store);
+    this.fetcher = new Fetcher(
+      this.store,
+      { fetch: this.fetch } as AutoInitOptions,
+    );
+    this.module = new ChatsModuleRdfLib({
+      store: this.store,
+      fetcher: this.fetcher,
+      updater: this.updater,
+    });
+  }
   async fetchChat(): Promise<void> {
+    this.initSolidDataModule();
+    // if (this.fetcher) {
+    //   console.log('fetching todayDoc');
+    //   await this.fetcher.load(this.getTodayDoc(process.env.CHANNEL_IN_SOLID));
+    //   console.log('done fetching todayDoc');
+    // } else {
+    //   console.error('no fetcher?');
+    // }
     const { latestMessages }: {
       uri: string,
       name: string,
       latestMessages: { uri: string, text: string, date: Date, authorWebId: string }[],
     } = await this.module.readChat(process.env.CHANNEL_IN_SOLID);
+    console.log(latestMessages);
     await Promise.all(latestMessages.map(async (entry) => {
       const [ channelDrop, authorDrop, messageDrop ] = this.entryToDrops(entry);
       if (typeof messageDrop.channelId !== 'string') {
         console.error('weird, no channel found for this entry of latestMessages from the chat SDM?', entry);
       }
+      console.log('Solid incoming:', messageDrop.text);
       this.tub.addObjects([ channelDrop, authorDrop, messageDrop ]);
       
     }));
@@ -182,6 +191,7 @@ export class SolidClient {
       [Symbol.asyncIterator](): AsyncIterableIterator<string>;
     }) {
       console.log(notificationText);
+      console.log('fetching chat!');
       this.fetchChat();
     }
     // console.log('Outside stream listener\'s for-await loop');
