@@ -5,7 +5,6 @@ import { Tub, createTubs } from './tub.js';
 import { SlackClient } from './SlackClient.js';
 import { SolidClient } from './SolidClient.js';
 
-
 createServer((req: IncomingMessage, res: ServerResponse) => {
   req.on('data', (chunk) => {
     console.log(chunk);
@@ -20,7 +19,6 @@ async function runSolid(solidTub: Tub): Promise<void> {
   // await solid.createChat('https://michielbdejong.solidcommunity.net/IndividualChats/bla', 'Bla Chat');
   // const read = await solid.readChat('https://michielbdejong.solidcommunity.net/IndividualChats/blactbd1Z/index.ttl#this');
   // console.log(read);
-
 }
 async function runSlack(slackTub: Tub): Promise<void> {
   const slack = new SlackClient('', slackTub);
@@ -28,23 +26,25 @@ async function runSlack(slackTub: Tub): Promise<void> {
 }
 
 async function run(): Promise<void> {
-  const [ slackTub, solidTub ] = await createTubs(['slack', 'solid'], {
-    channel: [{
+  const [slackTub, solidTub] = await createTubs(['slack', 'solid'], {
+    channel: [
+      {
         solid: process.env.CHANNEL_IN_SOLID,
         slack: process.env.CHANNEL_IN_SLACK,
-    }],
-    author: [{
-      slack: 'U05TRV6UVPV',
-      solid: 'https://michielbdejong.solidcommunity.net/profile/card#me',
-    },{
-      slack: 'U0816RHEE85',
-      solid: 'https://michielbdejong.solidcommunity.net/profile/card#me',
-    }],
+      },
+    ],
+    author: [
+      {
+        slack: 'U05TRV6UVPV',
+        solid: 'https://michielbdejong.solidcommunity.net/profile/card#me',
+      },
+      {
+        slack: 'U0816RHEE85',
+        solid: 'https://michielbdejong.solidcommunity.net/profile/card#me',
+      },
+    ],
   });
-  await Promise.all([
-    runSolid(solidTub),
-    runSlack(slackTub),
-  ]);
+  await Promise.all([runSolid(solidTub), runSlack(slackTub)]);
 }
 
 // ...

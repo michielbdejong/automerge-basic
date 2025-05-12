@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 const bolt = await import('@slack/bolt');
 import { Tub } from './tub.js';
-import { ChannelDrop, AuthorDrop,MessageDrop } from './drops.js';
+import { ChannelDrop, AuthorDrop, MessageDrop } from './drops.js';
 
 const App = bolt.default.App;
 
@@ -96,7 +96,7 @@ export class SlackClient extends EventEmitter {
       channel: drop.channelId,
       text: drop.text,
       metadata: {
-        event_type: "from_tubs",
+        event_type: 'from_tubs',
         event_payload: {
           foreignIds: drop.foreignIds,
         },
@@ -143,7 +143,7 @@ export class SlackClient extends EventEmitter {
       const channelDrop: ChannelDrop = {
         localId: process.env.CHANNEL_IN_SLACK,
         foreignIds: {},
-        model: 'channel'
+        model: 'channel',
       };
       const authorDrop: AuthorDrop = {
         localId: message.user,
@@ -160,7 +160,7 @@ export class SlackClient extends EventEmitter {
         authorId: message.user,
       };
       console.log('Slack incoming:', messageDrop.text);
-      this.tub.addObjects([ channelDrop, authorDrop, messageDrop ]);
+      this.tub.addObjects([channelDrop, authorDrop, messageDrop]);
     });
-  }  
+  }
 }
