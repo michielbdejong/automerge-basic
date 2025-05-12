@@ -56,7 +56,18 @@ describe('Tub', async () => {
       fired = true;
     });
     tubs[0].addObject(drop);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 10));
     expect(fired).toEqual(false);
+    const onTwo = tubs[1].getObject({ model: 'horse', localId: 'yup' });
+    expect(onTwo).toEqual({
+     bazId: undefined,
+     foo: 'bar',
+     foreignIds: {
+       one: 'test',
+       tubs: onTwo.foreignIds.tubs,
+     },
+     localId: 'yup',
+     model: 'horse',
+    });
   });
 });

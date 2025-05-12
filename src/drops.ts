@@ -38,6 +38,7 @@ export function localizedDropToInternal(fromPlatform: string, from: LocalizedDro
           ret.platformIds[platform] = from[field][platform];
         }
       });
+      // console.log('copied foreignIds into platformIds', from.foreignIds, ret.platformIds);
     } else if (field.endsWith('Id')) {
       const relation = field.substring(0, field.length - 'Id'.length);
       ret.relations[relation] = { model: relation, tubsId: identifierToInternal(relation, from[field]) };
@@ -49,12 +50,13 @@ export function localizedDropToInternal(fromPlatform: string, from: LocalizedDro
 }
 
 export function internalDropToLocalized(toPlatform: string, from: InternalDrop, identifierToLocal: (model: string, tubsId: string) => string): LocalizedDrop {
-  // console.log('localizing drop', from);
+  // console.log('finding localId', toPlatform, from.model, from.tubsId);
   const ret: LocalizedDrop = {
     localId: from.platformIds[toPlatform] || identifierToLocal(from.model, from.tubsId),
-    foreignIds: from.platformIds,
+    foreignIds: JSON.parse(JSON.stringify(from.platformIds)),
     model: from.model,
   };
+  // console.log('found localId', toPlatform, from.model, from.tubsId, ret.localId);
   delete ret.foreignIds[toPlatform];
   ret.foreignIds.tubs = from.tubsId;
   Object.keys(from.properties).forEach(field => {

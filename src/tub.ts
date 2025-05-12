@@ -38,6 +38,12 @@ export class Tub extends EventEmitter {
     // if there is an index for this platform that also exists on another platform,
     // emit an event to trigger a check if that foreignId is linked.
   }
+  private identifierToLocal(model: string, tubsId: string): string {
+    const objectKey = getObjectKey({ model, tubsId });
+    const object = this.getDictValue(objectKey, undefined, false);
+    // console.log('identifierToLocal looking at platformIds', this.platform, model, tubsId);
+    return (object ? (object as InternalDrop).platformIds[this.platform] : undefined);
+  }
   private checkObjectCoverage(): void {
     // console.log(`checking object coverage on ${this.platform}`, this.docHandle.docSync());
     try {
@@ -60,15 +66,16 @@ export class Tub extends EventEmitter {
             this.creating[tubsId] = true;
             const objectKey = getObjectKey({ model, tubsId });
             const internalDrop = this.getDictValue(objectKey, undefined, false);
-            const localizedDrop = internalDropToLocalized(this.platform, internalDrop, (model: string, tubsId: string): string => {
-              const objectKey = getObjectKey({ model, tubsId });
-              const object = this.getDictValue(objectKey, undefined, false);
-              return (object ? (object as InternalDrop).platformIds[this.platform] : undefined);
-            });
+            // console.log('localizing drop in object coverage check', this.platform);
+            const localizedDrop = internalDropToLocalized(this.platform, internalDrop, this.identifierToLocal.bind(this));
 
             if (typeof localizedDrop.localId === 'undefined') {
               // console.log('fire!', localizedDrop);
               this.emit('create', localizedDrop);
+            } else {
+              const indexKey = getIndexKey({ platform: this.platform, model: localizedDrop.model, localId: localizedDrop.localId });
+              // console.log('setting dict value', indexKey, tubsId);
+              this.setDictValue(indexKey, undefined, tubsId);
             }
           }
         });
@@ -164,11 +171,43 @@ export class Tub extends EventEmitter {
         const localId = localIds[i];
         // console.log('Considering', localId, this.docHandle.docSync()['index'][platform][model][localId], tubsId);
         if (this.docHandle.docSync()['index'][platform][model][localId] === tubsId) {
+          // console.log('yes', tubsId);
           return localId;
+        // } else {
+        //   console.log('no', tubsId);
         }
       }
     }
     return undefined;
+  }
+  getObject({ model, localId }: { model: string, localId: string }): LocalizedDrop | undefined {
+    // console.log('getObject', this.platform, model, localId, JSON.stringify(this.docHandle.docSync(), null, 2));
+    if (typeof this.docHandle.docSync()['index'] === 'undefined') {
+      // console.log('case 1');
+      return undefined;
+    }
+    if (typeof this.docHandle.docSync()['index'][this.platform] === 'undefined') {
+      // console.log('case 2');
+      return undefined;
+    }
+    if (typeof this.docHandle.docSync()['index'][this.platform][model] === 'undefined') {
+      // console.log('case 3');
+      return undefined;
+    }
+    if (typeof this.docHandle.docSync()['index'][this.platform][model][localId] === 'undefined') {
+      // console.log('case 4');
+      return undefined;
+    }
+    const tubsId = this.docHandle.docSync()['index'][this.platform][model][localId];
+    if (typeof this.docHandle.docSync()['objects'] === 'undefined') {
+      // console.log('case 5');
+      return undefined;
+    }
+    // console.log('case 6');
+    const objectKey = getObjectKey({ model, tubsId });
+    const internalDrop = this.getDictValue(objectKey, undefined, false);
+    // console.log('localizing drop in getObject', this.platform, internalDrop);
+    return internalDropToLocalized(this.platform, internalDrop, this.identifierToLocal.bind(this));
   }
   addObject(drop: LocalizedDrop): void {
     if ((typeof this.equivalences[drop.model] !== 'undefined') && (typeof this.equivalences[drop.model][drop.localId] !== 'undefined')) {
@@ -182,6 +221,7 @@ export class Tub extends EventEmitter {
     const internalDrop = localizedDropToInternal(this.platform, drop, (model: string, localId: string): string => {
       const indexKey = getIndexKey({ platform: this.platform, model, localId });
       const tubsId = this.getDictValue(indexKey, undefined, true);
+      // console.log(`Converted localId for ${model} ${localId} into tubsId ${tubsId}`);
       return tubsId;
     });
     // console.log(`Adding ${drop.model} drop`, drop, internalDrop);
