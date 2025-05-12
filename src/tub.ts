@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import { DocHandle } from '@automerge/automerge-repo';
 import { NestedDoc, getDocEntry, setDocEntry, createRepo, getIndexKey, getObjectKey } from './utils.js';
+import { Equivalences, LocalEquivalences, equivalencesToLocalEquivalences } from './equivalences.js';
 import { LocalizedDrop, InternalDrop, localizedDropToInternal, internalDropToLocalized } from './drops.js';
 // import { LocalizedDrop, localizedDropToInternal } from './drops.js';
 
@@ -14,13 +15,7 @@ import { LocalizedDrop, InternalDrop, localizedDropToInternal, internalDropToLoc
 //     }
 //   }
 // }
-export type Equivalences = {
-  [model: string]: {
-    [localId: string]: {
-      [platform: string]: string
-    }
-  }
-};
+
 
 export class Tub extends EventEmitter {
   docHandle: DocHandle<unknown>;
@@ -28,11 +23,12 @@ export class Tub extends EventEmitter {
   creating: {
     [tubsId: string]: boolean
   } = {};
-  equivalences: Equivalences;
+  equivalences: LocalEquivalences;
   constructor(platform: string, equivalences: Equivalences) {
     super();
     this.platform = platform;
-    this.equivalences = equivalences;
+    this.equivalences = equivalencesToLocalEquivalences(equivalences, platform);
+    // console.log('local equivalences', platform, this.equivalences);
     // setInterval(() => {
     //   this.checkCoverage();
     // }, 10000);
@@ -58,7 +54,7 @@ export class Tub extends EventEmitter {
           // console.log(`On ${this.platform}, ${model} ${tubsId} has localId ${localId}`);
           if (typeof localId === 'undefined') {
             if (this.creating[tubsId]) {
-              console.log(`Already creating ${tubsId} on ${this.platform}`);
+              // console.log(`Already creating ${model} ${tubsId} on ${this.platform}`);
               return;
             }
             this.creating[tubsId] = true;
@@ -69,7 +65,11 @@ export class Tub extends EventEmitter {
               const object = this.getDictValue(objectKey, undefined, false);
               return (object ? (object as InternalDrop).platformIds[this.platform] : undefined);
             });
-            this.emit('create', localizedDrop);
+
+            if (typeof localizedDrop.localId === 'undefined') {
+              // console.log('fire!', localizedDrop);
+              this.emit('create', localizedDrop);
+            }
           }
         });
       });
@@ -171,6 +171,14 @@ export class Tub extends EventEmitter {
     return undefined;
   }
   addObject(drop: LocalizedDrop): void {
+    if ((typeof this.equivalences[drop.model] !== 'undefined') && (typeof this.equivalences[drop.model][drop.localId] !== 'undefined')) {
+      Object.keys(this.equivalences[drop.model][drop.localId]).forEach((foreignPlatform: string) => {
+        if ((typeof drop.foreignIds[foreignPlatform] !== 'undefined') && (drop.foreignIds[foreignPlatform] !== this.equivalences[drop.model][drop.localId][foreignPlatform])) {
+          throw new Error(`Foreign Id for ${foreignPlatform} clashes with this Tub's equivalences`);
+        }
+        drop.foreignIds[foreignPlatform] = this.equivalences[drop.model][drop.localId][foreignPlatform];
+      });
+    }
     const internalDrop = localizedDropToInternal(this.platform, drop, (model: string, localId: string): string => {
       const indexKey = getIndexKey({ platform: this.platform, model, localId });
       const tubsId = this.getDictValue(indexKey, undefined, true);
@@ -181,22 +189,22 @@ export class Tub extends EventEmitter {
     this.setDictValue(indexKey, undefined, internalDrop.tubsId);
     const objectKey = getObjectKey({ model: drop.model, tubsId: internalDrop.tubsId });
     this.setDictValue(objectKey, undefined, internalDrop);
-    // console.log('object added', this.docHandle.docSync());
+    // console.log('object added', JSON.stringify(this.docHandle.docSync(), null, 2));
   }
 }
 
-export async function createTubs(names: string[], equivalencesMaps: Equivalences[]): Promise<Tub[]> {
+export async function createTubs(names: string[], equivalences: Equivalences): Promise<Tub[]> {
   if (names.length === 0) {
     return [];
   }
 
   const tubs = [
-    new Tub(names[0], equivalencesMaps[0]),
+    new Tub(names[0], equivalences),
   ];
   const docUrl = await tubs[0].createDoc();
 
   for (let i=1; i < names.length; i++) {
-    tubs[i] = new Tub(names[i], equivalencesMaps[i]);
+    tubs[i] = new Tub(names[i], equivalences);
     await tubs[i].setDoc(docUrl);
   }
   return tubs;

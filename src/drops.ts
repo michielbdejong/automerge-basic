@@ -1,8 +1,11 @@
+export type IdentityMap = {
+  [platform: string]: string,
+};
+
 export type InternalDrop = {
   tubsId: string,
-  platformIds: { // identifiers on any platforms, not tubs
-    [platform: string]: string,
-  },
+  platformIds: IdentityMap // identifiers on any platforms, not tubs
+    
   model: string,
   properties: {
     [key: string]: string | number | Date | boolean
@@ -14,9 +17,7 @@ export type InternalDrop = {
 
 export type LocalizedDrop = {
   localId: string | undefined,
-  foreignIds: { // identifiers on any platforms, including tubs, but not the local one
-    [platform: string]: string,
-  },
+  foreignIds: IdentityMap // identifiers on any platforms, including tubs, but not the local one
   model: string,
 };
 

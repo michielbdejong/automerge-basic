@@ -28,22 +28,12 @@ async function runSlack(slackTub: Tub): Promise<void> {
 }
 
 async function run(): Promise<void> {
-  const [ slackTub, solidTub ] = await createTubs(['slack', 'solid'], [
-    {
-      channel: {
-        [process.env.CHANNEL_IN_SLACK]: {
-          solid: process.env.CHANNEL_IN_SOLID 
-        }
-      }
-    },
-    {
-      channel: {
-        [process.env.CHANNEL_IN_SOLID]: {
-          solid: process.env.CHANNEL_IN_SLACK
-        }
-      }
-    },
-  ]);
+  const [ slackTub, solidTub ] = await createTubs(['slack', 'solid'], {
+    channel: [{
+        solid: process.env.CHANNEL_IN_SOLID,
+        slack: process.env.CHANNEL_IN_SLACK,
+    }],
+  });
   await Promise.all([
     runSolid(solidTub),
     runSlack(slackTub),

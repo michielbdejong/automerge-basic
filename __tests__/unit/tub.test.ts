@@ -8,7 +8,12 @@ type FooDrop = LocalizedDrop & {
 };
 
 describe('Tub', async () => {
-  const tubs = await createTubs(['one', 'two'], [ {}, {} ]);
+  const tubs = await createTubs(['one', 'two'], {
+    horse: [{
+      one: 'test',
+      two: 'yup',
+    }],
+  });
 
   it('can fire a change event', async () => {
     const drop: FooDrop = {
@@ -24,7 +29,7 @@ describe('Tub', async () => {
         resolve(drop);;
       });
     });
-    await tubs[0].addObject(drop);
+    tubs[0].addObject(drop);
     const onTwo = await fired as FooDrop;
     expect(onTwo).toEqual({
        bazId: undefined,
@@ -36,5 +41,22 @@ describe('Tub', async () => {
        localId: undefined,
        model: 'cow',
     });
+  });
+  it('can understand equivalences', async () => {
+    const drop: FooDrop = {
+      localId: 'test',
+      model: 'horse',
+      foreignIds: {
+      },
+      foo: 'bar',
+      bazId: '15',
+    };
+    let fired = false;
+    tubs[1].on('create', () => {
+      fired = true;
+    });
+    tubs[0].addObject(drop);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fired).toEqual(false);
   });
 });
