@@ -32,6 +32,8 @@ export function localizedDropToInternal(fromPlatform: string, from: LocalizedDro
   Object.keys(from).forEach(field => {
     if (field === 'localId') {
       ret.platformIds[fromPlatform] = from[field];
+    } else if (field === 'model') {
+      ret.model = from[field];
     } else if (field === 'foreignIds') {
       Object.keys(from[field]).forEach(platform => {
         if (platform !== 'tubs') {
@@ -51,6 +53,7 @@ export function localizedDropToInternal(fromPlatform: string, from: LocalizedDro
 
 export function internalDropToLocalized(toPlatform: string, from: InternalDrop, identifierToLocal: (model: string, tubsId: string) => string): LocalizedDrop {
   // console.log('finding localId', toPlatform, from.model, from.tubsId);
+  // console.log('converting platformIds to foreignIds', from.platformIds);
   const ret: LocalizedDrop = {
     localId: from.platformIds[toPlatform] || identifierToLocal(from.model, from.tubsId),
     foreignIds: JSON.parse(JSON.stringify(from.platformIds)),

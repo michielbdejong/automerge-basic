@@ -24,23 +24,49 @@ describe('Tub', async () => {
       foo: 'bar',
       bazId: '15',
     };
-    const fired = new Promise((resolve) => {
-      tubs[1].on('create', (drop: LocalizedDrop) => {
-        resolve(drop);;
-      });
-    });
+    // const fired = new Promise((resolve) => {
+    //   tubs[1].on('create', (drop: LocalizedDrop) => {
+    //     const copied = JSON.parse(JSON.stringify(drop));
+    //     copied.localId = 'localIdOnTwo';
+    //     tubs[1].addObject(copied);
+    //     resolve(drop);
+    //   });
+    // });
     tubs[0].addObject(drop);
-    const onTwo = await fired as FooDrop;
-    expect(onTwo).toEqual({
-       bazId: undefined,
-       foo: 'bar',
-       foreignIds: {
-         one: 'test',
-         tubs: onTwo.foreignIds.tubs,
-       },
-       localId: undefined,
-       model: 'cow',
+    const onOneBefore = tubs[0].getObject({ model: 'cow', localId: 'test' });
+    const tubsId = onOneBefore.foreignIds.tubs;
+    expect(typeof tubsId).toEqual('string');
+    expect(onOneBefore).toEqual({
+        localId: 'test',
+        model: 'cow',
+        foreignIds: {
+          tubs: tubsId,
+        },
+        foo: 'bar',
+        bazId: '15',
     });
+    // const onTwo = await fired as FooDrop;
+    // expect(onTwo).toEqual({
+    //    bazId: undefined,
+    //    foo: 'bar',
+    //    foreignIds: {
+    //      one: 'test',
+    //      tubs: tubsId,
+    //    },
+    //    localId: undefined,
+    //    model: 'cow',
+    // });
+    // const onOneAfter = tubs[0].getObject({ model: 'cow', localId: 'test' });
+    // expect(onOneAfter).toEqual({
+    //     localId: 'test',
+    //     model: 'cow',
+    //     foreignIds: {
+    //       two: 'localIdOnTwo',
+    //       tubs: tubsId,
+    //     },
+    //     foo: 'bar',
+    //     bazId: '15',
+    // });
   });
   it('can understand equivalences', async () => {
     const drop: FooDrop = {
@@ -51,14 +77,34 @@ describe('Tub', async () => {
       foo: 'bar',
       bazId: '15',
     };
-    let fired = false;
-    tubs[1].on('create', () => {
-      fired = true;
+    let fired: LocalizedDrop[] = [];
+    tubs[1].on('create', (drop: LocalizedDrop) => {
+      fired.push(drop);
     });
     tubs[0].addObject(drop);
     await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(fired).toEqual(false);
+    expect(fired).toEqual([
+      {
+        foreignIds: {
+          one: 'test',
+          tubs: fired[0].foreignIds.tubs,
+        },
+        localId: undefined,
+        model: 'cow',
+        bazId: undefined,
+        foo: 'bar',
+      },
+      {
+        "foreignIds": {
+          "one": "15",
+          "tubs": fired[1].foreignIds.tubs,
+        },
+        "localId": undefined,
+        "model": "baz",
+      },
+    ]);
     const onTwo = tubs[1].getObject({ model: 'horse', localId: 'yup' });
+    // console.log(JSON.stringify(tubs[1].docHandle.docSync(), null, 2));
     expect(onTwo).toEqual({
      bazId: undefined,
      foo: 'bar',

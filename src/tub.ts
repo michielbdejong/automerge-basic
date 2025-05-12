@@ -41,12 +41,12 @@ export class Tub extends EventEmitter {
   }
   private identifierToLocal(model: string, tubsId: string): string {
     const objectKey = getObjectKey({ model, tubsId });
-    const object = this.getDictValue(objectKey, undefined, false);
+    const object = this.getDictValue(objectKey);
     // console.log('identifierToLocal looking at platformIds', this.platform, model, tubsId);
     return (object ? (object as InternalDrop).platformIds[this.platform] : undefined);
   }
   private checkObjectCoverage(): void {
-    console.log(`checking object coverage on ${this.platform}`, JSON.stringify(this.docHandle.docSync(), null, 2));
+    // console.log(`checking object coverage on ${this.platform}`, JSON.stringify(this.docHandle.docSync(), null, 2));
     try {
       // console.log('in try');
       const models = Object.keys(this.docHandle.docSync()['objects']);
@@ -66,7 +66,7 @@ export class Tub extends EventEmitter {
             }
             this.creating[tubsId] = true;
             const objectKey = getObjectKey({ model, tubsId });
-            const internalDrop = this.getDictValue(objectKey, undefined, false);
+            const internalDrop = this.getDictValue(objectKey);
             // console.log('localizing drop in object coverage check', this.platform);
             const localizedDrop = internalDropToLocalized(this.platform, internalDrop, this.identifierToLocal.bind(this));
 
@@ -76,7 +76,7 @@ export class Tub extends EventEmitter {
             } else {
               const indexKey = getIndexKey({ platform: this.platform, model: localizedDrop.model, localId: localizedDrop.localId });
               // console.log('setting dict value', indexKey, tubsId);
-              this.setDictValue(indexKey, undefined, tubsId);
+              this.setDictValue(indexKey, tubsId);
               Object.keys(localizedDrop.foreignIds).forEach(platform => {
                 this.emit('foreign-id-added', localizedDrop.localId, platform, localizedDrop.foreignIds[platform]);
               });
@@ -88,6 +88,7 @@ export class Tub extends EventEmitter {
       console.error(e);
     }
   }
+
   private checkCoverage(): void {
     // console.log('--------------------');
     // console.log(this.platform);
@@ -105,12 +106,12 @@ export class Tub extends EventEmitter {
   private async setupDoc(): Promise<string> {
     // console.log('registering change handler');
     this.docHandle.on('change', () => {
-      if (typeof this.timer === 'undefined') {
-        this.timer = setTimeout(() => {
-          this.checkCoverage();
-          this.timer = undefined;
-        }, 1000);
-      }
+      // if (typeof this.timer === 'undefined') {
+      //   this.timer = setTimeout(() => {
+      //     this.checkCoverage();
+      //     this.timer = undefined;
+      //   }, 1000);
+      // }
       // console.log('change handler fired');
       this.checkCoverage();
     });
@@ -134,39 +135,17 @@ export class Tub extends EventEmitter {
     this.docHandle = createRepo().find(docUrl as any);
     return this.setupDoc();
   }
-  private setDictValue(key: string[], altKey: string[] | undefined, value: any): void {
+  private setDictValue(key: string[], value: any): void {
     // console.log('setDictValue', key, altKey, value);
     this.docHandle.change((d: NestedDoc) => {
       setDocEntry(d, key, value);
-      if (altKey) {
-       setDocEntry(d, altKey, value);
-      }
       // console.log('doc changed inside callback!', d);
     });
     // console.log(`this.docHandle.docSync() updated in ${this.platform}`, this.docHandle.docSync());
     return value;
   }
-  private ensureCopied(existingKey: string[], otherKey?: string[]): any {
-    // console.log('ensureCopied', existingKey, otherKey);
-    const entry = getDocEntry(this.docHandle.docSync(), existingKey);
-    if (otherKey && typeof getDocEntry(this.docHandle.docSync(), otherKey) === 'undefined') {
-      this.setDictValue(otherKey, undefined, entry); 
-    }
-    return entry;
-  }
-  private getDictValue(key: string[], altKey?: string[], mintIfMissing?: boolean): any {
-    // console.log('getDictValue', key, altKey, mintIfMissing);
- 
-    if (getDocEntry(this.docHandle.docSync(), key)) {
-      return this.ensureCopied(key, altKey);
-    }
-    if (altKey && getDocEntry(this.docHandle.docSync(), altKey)) {
-      return this.ensureCopied(altKey, key);
-    }
-    if (mintIfMissing) {
-      return this.setDictValue(key, altKey, randomUUID());
-    }
-    return undefined;
+  private getDictValue(key: string[]): any {
+    return getDocEntry(this.docHandle.docSync(), key);
   }
   private getLocalId({ model, tubsId, platform }: { model: string, tubsId: string, platform?: string }): string | undefined {
     if (!platform) {
@@ -215,8 +194,8 @@ export class Tub extends EventEmitter {
     }
     // console.log('case 6');
     const objectKey = getObjectKey({ model, tubsId });
-    const internalDrop = this.getDictValue(objectKey, undefined, false);
-    // console.log('localizing drop in getObject', this.platform, internalDrop);
+    const internalDrop = this.getDictValue(objectKey);
+    // console.log('localizing drop in getObject', this.platform, internalDrop, JSON.stringify(this.docHandle.docSync(), null, 2));
     return internalDropToLocalized(this.platform, internalDrop, this.identifierToLocal.bind(this));
   }
   addObject(drop: LocalizedDrop): void {
@@ -230,15 +209,30 @@ export class Tub extends EventEmitter {
     }
     const internalDrop = localizedDropToInternal(this.platform, drop, (model: string, localId: string): string => {
       const indexKey = getIndexKey({ platform: this.platform, model, localId });
-      const tubsId = this.getDictValue(indexKey, undefined, true);
+      let tubsId = this.getDictValue(indexKey);
+      if (typeof tubsId === 'undefined') {
+        tubsId = this.setDictValue(indexKey, randomUUID());
+        const objectKey = getObjectKey({ model, tubsId });
+        this.setDictValue(objectKey, {
+          tubsId,
+          model,
+          platformIds: {
+            [this.platform]: localId,
+          },
+          properties: {},
+          relations: {},
+        });
+    
+      }
       // console.log(`Converted localId for ${model} ${localId} into tubsId ${tubsId}`);
       return tubsId;
     });
     // console.log(`Adding ${drop.model} drop`, drop, internalDrop);
     const indexKey = getIndexKey({ platform: this.platform, model: drop.model, localId: drop.localId });
-    this.setDictValue(indexKey, undefined, internalDrop.tubsId);
+    this.setDictValue(indexKey, internalDrop.tubsId);
     const objectKey = getObjectKey({ model: drop.model, tubsId: internalDrop.tubsId });
-    this.setDictValue(objectKey, undefined, internalDrop);
+    // console.log('writing object', objectKey, internalDrop);
+    this.setDictValue(objectKey, internalDrop);
     // console.log('object added', JSON.stringify(this.docHandle.docSync(), null, 2));
   }
 }

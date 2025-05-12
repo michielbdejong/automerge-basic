@@ -22,6 +22,9 @@ export class SolidClient {
     this.tub = tub;
     this.store = graph();
     this.updater = new UpdateManager(this.store);
+    setInterval(() => {
+      this.fetchChat();
+    }, 5000);
   }
   async connect(): Promise<void> {
     console.log(`Connecting to Solid...`);
@@ -76,11 +79,7 @@ export class SolidClient {
     return containerUri + dateFolders + "/chat.ttl";
   }
   async createOnPlatform(drop: MessageDrop): Promise<void> {
-    // console.log('creating on Solid:', model, tubsId);
-    // const localizedObject = await this.tub.getLocalizedObject({ model, tubsId });
-    // const slackId = this.tub.getLocalId({ model: 'message', platform: 'slack', tubsId });
-    // const authorWebId = 'https://michielbdejong.solidcommunity.net/profile/card#me';
-    // https://github.com/solid-contrib/data-modules/blob/17aadadd17ae74906de1526b62cba32b8fc6cd36/chats/rdflib/src/index.ts#L84
+    console.log('creating on Solid:', drop);
     if (drop.model === 'message') {
       const solidChatMessage = {
         chatUri: process.env.CHANNEL_IN_SOLID,
@@ -107,7 +106,51 @@ export class SolidClient {
       st(messageNode, owl("sameAs"), sym(`https://tubsproject.org/id/${foreignPlatform}/message/${foreignId}`), messageNode.doc()),
     ]);
   }
-  
+  entryToDrop(entry: { uri: string, text: string, date: Date, authorWebId: string }): MessageDrop {
+    const drop = {
+      localId: entry.uri,
+      foreignIds: {},
+      model: 'message',
+      text: entry.text,
+      date: entry.date,
+      authorId: entry.authorWebId,
+      channelId: process.env.CHANNEL_IN_SOLID,
+    } as MessageDrop;
+    const sameAsNodes = this.store.each(
+      sym(entry.uri),
+      owl('sameAs'),
+      null,
+      sym(entry.uri).doc(),
+    );
+    // console.log(`found sameAsNode for ${entry.uri}`, sameAsNodes);
+    for (let i = 0; i < sameAsNodes.length; i++) {
+      if (isNamedNode(sameAsNodes[i]) && sameAsNodes[i].value.startsWith('https://tubsproject.org/id/')) {
+        const parts = sameAsNodes[i].value.split('/');
+        // `https://tubsproject.org/id/${otherPlatform}/message/bla`
+        //    0   1   2             3        4            5     6
+        const otherPlatform = parts[4];
+        drop.foreignIds[otherPlatform] = sameAsNodes[i].value.substring(`https://tubsproject.org/id/${otherPlatform}/message/`.length);
+      }
+    }
+    // console.log(drop.foreignIds);
+    return drop;
+  }
+  async fetchChat(): Promise<void> {
+    const { latestMessages }: {
+      uri: string,
+      name: string,
+      latestMessages: { uri: string, text: string, date: Date, authorWebId: string }[],
+    } = await this.module.readChat(process.env.CHANNEL_IN_SOLID);
+    await Promise.all(latestMessages.map(async (entry) => {
+      const drop = this.entryToDrop(entry);
+      if (typeof drop.channelId === 'string') {
+        // console.log('setting message object', tubsMsgId, obj);
+        this.tub.addObject(drop);
+      } else {
+        console.error('weird, no channel found for this entry of latestMessages from the chat SDM?', entry);
+      }
+    }));
+  }
   async listen(): Promise<void> {
     this.tub.on('create', this.createOnPlatform.bind(this));
     this.tub.on('foreign-id-added', this.foreignIdAdded.bind(this));
@@ -127,65 +170,7 @@ export class SolidClient {
       [Symbol.asyncIterator](): AsyncIterableIterator<string>;
     }) {
       console.log(notificationText);
-      // const docRes = await this.fetch(todayDoc, {
-      //   headers: {
-      //     Accept: 'application/ld+json',
-      //   },
-      // });
-      // const chatChannel = await docRes.json();
-      const { latestMessages }: {
-        uri: string,
-        name: string,
-        latestMessages: { uri: string, text: string, date: Date, authorWebId: string }[],
-      } = await this.module.readChat(topic);
-      // const localIndexKey = this.tub.getIndexKey({ model: 'channel', localId: topic });
-      // const tubsChannelId = this.tub.getId(localIndexKey, equivalences[localIndexKey.join(':')], true);
-      await Promise.all(latestMessages.map(async (entry) => {
-        // if (doneOne) {
-        //   return;
-        // } else {
-        //   doneOne = true;
-        // }
-  
-        // const messageKey = this.tub.getIndexKey({ model: 'message', localId: entry.uri });
-        // console.log('getting Id for message', messageKey);
-        // const tubsMsgId = this.tub.getId(messageKey, undefined, true);
-        // const authorKey = this.tub.getIndexKey({ model: 'author', localId: entry.authorWebId});
-        // console.log('getting Id for author', authorKey);
-        // const tubsAuthorId = this.tub.getId(authorKey, undefined, true);
-        const drop = {
-          localId: entry.uri,
-          foreignIds: {},
-          model: 'message',
-          text: entry.text,
-          date: entry.date,
-          authorId: entry.authorWebId,
-          channelId: topic,
-        } as MessageDrop;
-        const sameAsNodes = this.store.each(
-          sym(entry.uri),
-          owl('sameAs'),
-          null,
-          sym(entry.uri).doc(),
-        );
-        // console.log(`found sameAsNode for ${entry.uri}`, sameAsNodes);
-        for (let i = 0; i < sameAsNodes.length; i++) {
-          if (isNamedNode(sameAsNodes[i]) && sameAsNodes[i].value.startsWith('https://tubsproject.org/id/')) {
-            const parts = sameAsNodes[i].value.split('/');
-            // `https://tubsproject.org/id/${otherPlatform}/message/bla`
-            //    0   1   2             3        4            5     6
-            const otherPlatform = parts[4];
-            drop.foreignIds[otherPlatform] = sameAsNodes[i].value.substring(`https://tubsproject.org/id/${otherPlatform}/message/`.length);
-          }
-        }
-        console.log(drop.foreignIds);
-        if (typeof drop.channelId === 'string') {
-          // console.log('setting message object', tubsMsgId, obj);
-          this.tub.addObject(drop);
-        } else {
-          console.error('weird, no channel found for this entry of latestMessages from the chat SDM?', entry);
-        }
-      }));
+      this.fetchChat();
     }
     // console.log('Outside stream listener\'s for-await loop');
   }  

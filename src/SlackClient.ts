@@ -103,6 +103,7 @@ export class SlackClient extends EventEmitter {
       drop.localId = created.ts;
       // const localKey = this.tub.getIndexKey({ model: 'message', localId: created.ts });
       // this.tub.setLocalId(localKey, tubsId);
+      console.log('writing back localId from Slack creation', drop.localId);
       this.tub.addObject(drop);
     }
     console.log(created);
