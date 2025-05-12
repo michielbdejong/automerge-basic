@@ -77,7 +77,7 @@ describe('Tub', async () => {
       foo: 'bar',
       bazId: '15',
     };
-    let fired: LocalizedDrop[] = [];
+    const fired: LocalizedDrop[] = [];
     tubs[1].on('create', (drop: LocalizedDrop) => {
       fired.push(drop);
     });

@@ -33,6 +33,13 @@ async function run(): Promise<void> {
         solid: process.env.CHANNEL_IN_SOLID,
         slack: process.env.CHANNEL_IN_SLACK,
     }],
+    author: [{
+      slack: 'U05TRV6UVPV',
+      solid: 'https://michielbdejong.solidcommunity.net/profile/card#me',
+    },{
+      slack: 'U0816RHEE85',
+      solid: 'https://michielbdejong.solidcommunity.net/profile/card#me',
+    }],
   });
   await Promise.all([
     runSolid(solidTub),

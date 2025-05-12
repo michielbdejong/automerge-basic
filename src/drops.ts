@@ -22,6 +22,10 @@ export type LocalizedDrop = {
 };
 
 export function localizedDropToInternal(fromPlatform: string, from: LocalizedDrop, identifierToInternal: (model: string, localId: string) => string): InternalDrop {
+  if (typeof from.model !== 'string') {
+    console.log(from);
+    throw new Error('localized drop does not have a model');
+  }
   const ret: InternalDrop = {
     tubsId: from.foreignIds['tubs'] || identifierToInternal(from.model, from.localId),
     platformIds: {},
@@ -30,12 +34,20 @@ export function localizedDropToInternal(fromPlatform: string, from: LocalizedDro
     model: from.model,
   };
   Object.keys(from).forEach(field => {
+    if (typeof from[field] === 'undefined') {
+      console.log(from);
+      throw new Error(`localized drop has ${field} undefined`);
+    }
     if (field === 'localId') {
       ret.platformIds[fromPlatform] = from[field];
     } else if (field === 'model') {
       ret.model = from[field];
     } else if (field === 'foreignIds') {
       Object.keys(from[field]).forEach(platform => {
+        if (typeof from[field][platform] === 'undefined') {
+          console.log(from);
+          throw new Error(`localized drop has ${field}.${platform} undefined`);
+        }    
         if (platform !== 'tubs') {
           ret.platformIds[platform] = from[field][platform];
         }

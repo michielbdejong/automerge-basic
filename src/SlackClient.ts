@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 const bolt = await import('@slack/bolt');
 import { Tub } from './tub.js';
-import { MessageDrop } from './drops.js';
+import { ChannelDrop, AuthorDrop,MessageDrop } from './drops.js';
 
 const App = bolt.default.App;
 
@@ -87,6 +87,9 @@ export class SlackClient extends EventEmitter {
     //   console.error(`failed to localize channelId for ${model} ${tubsId}`);
     //   return;
     // }
+    if (drop.model !== 'message') {
+      return;
+    }
     console.log('creating on Slack:', drop);
     // https://docs.slack.dev/reference/methods/chat.postMessage
     const created = await this.app.client.chat.postMessage({
@@ -103,7 +106,7 @@ export class SlackClient extends EventEmitter {
       drop.localId = created.ts;
       // const localKey = this.tub.getIndexKey({ model: 'message', localId: created.ts });
       // this.tub.setLocalId(localKey, tubsId);
-      console.log('writing back localId from Slack creation', drop.localId);
+      console.log('writing back localId from Slack creation', drop);
       this.tub.addObject(drop);
     }
     console.log(created);
@@ -136,7 +139,17 @@ export class SlackClient extends EventEmitter {
       // const localId = this.tub.getIndexKey({ model: 'channel', localId: message.channel });
       // const tubsChannelId = await this.tub.getId(localId, equivalences[localId.join(':')], true);
       // const tubsMsgId = await this.tub.getId(this.tub.getIndexKey({ model: 'message', localId: message.ts }), undefined, true);
-      const drop: MessageDrop = {
+      const channelDrop: ChannelDrop = {
+        localId: process.env.CHANNEL_IN_SLACK,
+        foreignIds: {},
+        model: 'channel'
+      };
+      const authorDrop: AuthorDrop = {
+        localId: message.user,
+        foreignIds: {},
+        model: 'author',
+      };
+      const messageDrop: MessageDrop = {
         localId: message.ts,
         model: 'message',
         foreignIds: {},
@@ -145,7 +158,7 @@ export class SlackClient extends EventEmitter {
         channelId: message.channel,
         authorId: message.user,
       };
-      this.tub.addObject(drop);
+      this.tub.addObjects([ channelDrop, authorDrop, messageDrop ]);
       console.log(JSON.stringify(message, null, 2));
     });
   }  

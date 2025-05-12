@@ -4,7 +4,7 @@ import { Fetcher, graph, UpdateManager, AutoInitOptions, IndexedFormula, sym, Na
 // import { executeUpdate } from "@solid-data-modules/rdflib-utils";
 import ChatsModuleRdfLib, { ChatsModule } from "@solid-data-modules/chats-rdflib";
 import { Tub } from "./tub.js";
-import { MessageDrop } from "./drops.js";
+import { ChannelDrop, AuthorDrop, MessageDrop } from "./drops.js";
 
 const owl = Namespace("http://www.w3.org/2002/07/owl#");
 
@@ -34,7 +34,7 @@ export class SolidClient {
       provider: process.env.SOLID_SERVER,
     });
     this.fetch = (...args): Promise<Response> => {
-      // console.log('fetching!', args);
+      console.log('fetching!', args);
       return authenticatedFetch.apply(this, args);
     };
     // 1️⃣ create rdflib store, fetcher and updater as usual
@@ -91,7 +91,7 @@ export class SolidClient {
       const promises = Object.keys(drop.foreignIds ).map( async (platform) => {
         const messageNode = sym(drop.localId);
         await this.updater.updateMany([], [
-          st(messageNode, owl("sameAs"), sym(`https://tubsproject.org/id/${platform}/message/${drop.foreignIds[platform]}`), messageNode.doc()),
+          st(messageNode, owl("sameAs"), sym(`https://tubsproject.org/id/${platform}/${drop.model}/${drop.foreignIds[platform]}`), messageNode.doc()),
         ]);
       });
       await Promise.all(promises);
@@ -100,14 +100,27 @@ export class SolidClient {
     }
     // console.log(`added message to Solid chat`, messageUri);
   }
-  async foreignIdAdded(localId: string, foreignPlatform: string, foreignId: string): Promise<void> {
+  async foreignIdAdded(model: string, localId: string, foreignPlatform: string, foreignId: string): Promise<void> {
+    if (localId === 'https://michielbdejong.solidcommunity.net/profile/card#me') {
+      return; // this leads to a 500 error, it seems
+    }
     const messageNode = sym(localId);
     await this.updater.updateMany([], [
-      st(messageNode, owl("sameAs"), sym(`https://tubsproject.org/id/${foreignPlatform}/message/${foreignId}`), messageNode.doc()),
+      st(messageNode, owl("sameAs"), sym(`https://tubsproject.org/id/${foreignPlatform}/${model}/${foreignId}`), messageNode.doc()),
     ]);
   }
-  entryToDrop(entry: { uri: string, text: string, date: Date, authorWebId: string }): MessageDrop {
-    const drop = {
+  entryToDrops(entry: { uri: string, text: string, date: Date, authorWebId: string }): [ ChannelDrop, AuthorDrop, MessageDrop ] {
+    const channelDrop: ChannelDrop = {
+      localId: process.env.CHANNEL_IN_SOLID,
+      foreignIds: {},
+      model: 'channel'
+    };
+    const authorDrop: AuthorDrop = {
+      localId: entry.authorWebId,
+      foreignIds: {},
+      model: 'author',
+    };
+    const messageDrop: MessageDrop = {
       localId: entry.uri,
       foreignIds: {},
       model: 'message',
@@ -129,11 +142,11 @@ export class SolidClient {
         // `https://tubsproject.org/id/${otherPlatform}/message/bla`
         //    0   1   2             3        4            5     6
         const otherPlatform = parts[4];
-        drop.foreignIds[otherPlatform] = sameAsNodes[i].value.substring(`https://tubsproject.org/id/${otherPlatform}/message/`.length);
+        messageDrop.foreignIds[otherPlatform] = sameAsNodes[i].value.substring(`https://tubsproject.org/id/${otherPlatform}/message/`.length);
       }
     }
-    // console.log(drop.foreignIds);
-    return drop;
+    // console.log('entryToDrops', entry, channelDrop, authorDrop, messageDrop);
+    return [ channelDrop, authorDrop, messageDrop ];
   }
   async fetchChat(): Promise<void> {
     const { latestMessages }: {
@@ -142,13 +155,12 @@ export class SolidClient {
       latestMessages: { uri: string, text: string, date: Date, authorWebId: string }[],
     } = await this.module.readChat(process.env.CHANNEL_IN_SOLID);
     await Promise.all(latestMessages.map(async (entry) => {
-      const drop = this.entryToDrop(entry);
-      if (typeof drop.channelId === 'string') {
-        // console.log('setting message object', tubsMsgId, obj);
-        this.tub.addObject(drop);
-      } else {
+      const [ channelDrop, authorDrop, messageDrop ] = this.entryToDrops(entry);
+      if (typeof messageDrop.channelId !== 'string') {
         console.error('weird, no channel found for this entry of latestMessages from the chat SDM?', entry);
       }
+      this.tub.addObjects([ channelDrop, authorDrop, messageDrop ]);
+      
     }));
   }
   async listen(): Promise<void> {

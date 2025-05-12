@@ -30,9 +30,10 @@ export class Tub extends EventEmitter {
     this.platform = platform;
     this.equivalences = equivalencesToLocalEquivalences(equivalences, platform);
     // console.log('local equivalences', platform, this.equivalences);
-    // setInterval(() => {
-    //   this.checkCoverage();
-    // }, 10000);
+    setInterval(() => {
+      console.log(`Checking coverage for ${this.platform}`);
+      this.checkCoverage();
+    }, 10000);
   }
   
   private checkIndexCoverage(): void {
@@ -78,7 +79,7 @@ export class Tub extends EventEmitter {
               // console.log('setting dict value', indexKey, tubsId);
               this.setDictValue(indexKey, tubsId);
               Object.keys(localizedDrop.foreignIds).forEach(platform => {
-                this.emit('foreign-id-added', localizedDrop.localId, platform, localizedDrop.foreignIds[platform]);
+                this.emit('foreign-id-added', localizedDrop.model, localizedDrop.localId, platform, localizedDrop.foreignIds[platform]);
               });
             }
           }
@@ -222,18 +223,25 @@ export class Tub extends EventEmitter {
           properties: {},
           relations: {},
         });
-    
       }
       // console.log(`Converted localId for ${model} ${localId} into tubsId ${tubsId}`);
       return tubsId;
     });
     // console.log(`Adding ${drop.model} drop`, drop, internalDrop);
     const indexKey = getIndexKey({ platform: this.platform, model: drop.model, localId: drop.localId });
+    if (typeof internalDrop.tubsId === 'undefined') {
+      throw new Error(`Attempt to set undefined tubsId for ` + indexKey.join(':'));
+    }
     this.setDictValue(indexKey, internalDrop.tubsId);
     const objectKey = getObjectKey({ model: drop.model, tubsId: internalDrop.tubsId });
     // console.log('writing object', objectKey, internalDrop);
     this.setDictValue(objectKey, internalDrop);
     // console.log('object added', JSON.stringify(this.docHandle.docSync(), null, 2));
+  }
+  addObjects(drops: LocalizedDrop[]): void {
+    drops.forEach(drop => {
+      this.addObject(drop);
+    });
   }
 }
 
