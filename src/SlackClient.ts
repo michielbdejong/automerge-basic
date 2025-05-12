@@ -72,13 +72,13 @@ export class SlackClient extends EventEmitter {
     this.expressFullUrl = expressFullUrl;
     this.tub = tub;
   }
-  async createOnPlatform(model: string, drop: MessageDrop): Promise<void> {
+  async createOnPlatform(drop: MessageDrop): Promise<void> {
     // const localizedObject = await this.tub.getLocalizedObject({ model, tubsId });
     // if (typeof localizedObject.channelId === 'undefined') {
     //   console.error(`failed to localize channelId for ${model} ${tubsId}`);
     //   return;
     // }
-    console.log('creating on Slack:', model, drop);
+    console.log('creating on Slack:', drop);
     // https://docs.slack.dev/reference/methods/chat.postMessage
     const created = await this.app.client.chat.postMessage({
       channel: drop.channelId,
@@ -94,7 +94,7 @@ export class SlackClient extends EventEmitter {
       drop.localId = created.ts;
       // const localKey = this.tub.getIndexKey({ model: 'message', localId: created.ts });
       // this.tub.setLocalId(localKey, tubsId);
-      this.tub.addObject({ model, drop });
+      this.tub.addObject(drop);
     }
     console.log(created);
   }
@@ -128,11 +128,12 @@ export class SlackClient extends EventEmitter {
       // const tubsMsgId = await this.tub.getId(this.tub.getIndexKey({ model: 'message', localId: message.ts }), undefined, true);
       const drop = {
         localId: message.ts,
+        model: 'message',
         text: message.text,
         channelId: message.channel,
         authorId: message.user,
       } as MessageDrop;
-      this.tub.addObject({ model: 'message', drop });
+      this.tub.addObject(drop);
       console.log(JSON.stringify(message, null, 2));
     });
   }  

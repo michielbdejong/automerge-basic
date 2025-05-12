@@ -71,13 +71,13 @@ export class SolidClient {
     const containerUri = chatUri.substring(0, chatUri.length - `index.ttl#this`.length);
     return containerUri + dateFolders + "/chat.ttl";
   }
-  async createOnPlatform(model: string, drop: MessageDrop): Promise<void> {
+  async createOnPlatform(drop: MessageDrop): Promise<void> {
     // console.log('creating on Solid:', model, tubsId);
     // const localizedObject = await this.tub.getLocalizedObject({ model, tubsId });
     // const slackId = this.tub.getLocalId({ model: 'message', platform: 'slack', tubsId });
     // const authorWebId = 'https://michielbdejong.solidcommunity.net/profile/card#me';
     // https://github.com/solid-contrib/data-modules/blob/17aadadd17ae74906de1526b62cba32b8fc6cd36/chats/rdflib/src/index.ts#L84
-    if (model === 'message') {
+    if (drop.model === 'message') {
       // const messageUri = await this.module.postMessage({
       await this.module.postMessage({
         chatUri: process.env.CHANNEL_IN_SOLID,
@@ -102,7 +102,7 @@ export class SolidClient {
   async listen(): Promise<void> {
     this.tub.on('create', this.createOnPlatform.bind(this));
     const topic = process.env.CHANNEL_IN_SOLID;
-    this.tub.addObject({ model: 'channel', drop: { localId: topic, foreignIds: {}, model: 'channel' }});
+    this.tub.addObject({ localId: topic, foreignIds: {}, model: 'channel' });
     const todayDoc = this.getTodayDoc(topic);
     // FIXME: discover this URL from the response header link:
     const streamingUrl = `https://solidcommunity.net/.notifications/StreamingHTTPChannel2023/${encodeURIComponent(todayDoc)}`;
@@ -167,7 +167,7 @@ export class SolidClient {
         }
         if (typeof drop.channelId === 'string') {
           // console.log('setting message object', tubsMsgId, obj);
-          this.tub.addObject({ model: 'message', drop });
+          this.tub.addObject(drop);
         } else {
           console.error('weird, no channel found for this entry of latestMessages from the chat SDM?', entry);
         }

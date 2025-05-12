@@ -48,6 +48,7 @@ export function localizedDropToInternal(fromPlatform: string, from: LocalizedDro
 }
 
 export function internalDropToLocalized(toPlatform: string, from: InternalDrop, identifierToLocal: (model: string, tubsId: string) => string): LocalizedDrop {
+  // console.log('localizing drop', from);
   const ret: LocalizedDrop = {
     localId: from.platformIds[toPlatform] || identifierToLocal(from.model, from.tubsId),
     foreignIds: from.platformIds,

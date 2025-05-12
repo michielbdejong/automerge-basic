@@ -55,7 +55,7 @@ export class Tub extends EventEmitter {
           // console.log(`Checking object coverage for ${model} ${tubsId}`);
           const localId = this.getLocalId({ model, tubsId });
           // console.log('localId', localId);
-          console.log(`On ${this.platform}, ${model} ${tubsId} has localId ${localId}`);
+          // console.log(`On ${this.platform}, ${model} ${tubsId} has localId ${localId}`);
           if (typeof localId === 'undefined') {
             if (this.creating[tubsId]) {
               console.log(`Already creating ${tubsId} on ${this.platform}`);
@@ -67,9 +67,9 @@ export class Tub extends EventEmitter {
             const localizedDrop = internalDropToLocalized(this.platform, internalDrop, (model: string, tubsId: string): string => {
               const objectKey = getObjectKey({ model, tubsId });
               const object = this.getDictValue(objectKey, undefined, false);
-              return (object as InternalDrop).platformIds[this.platform];
+              return (object ? (object as InternalDrop).platformIds[this.platform] : undefined);
             });
-            this.emit('create', model, localizedDrop);
+            this.emit('create', localizedDrop);
           }
         });
       });
@@ -92,7 +92,9 @@ export class Tub extends EventEmitter {
     }
   }
   private async setupDoc(): Promise<string> {
+    // console.log('registering change handler');
     this.docHandle.on('change', () => {
+      // console.log('change handler fired');
       this.checkCoverage();
     });
     // console.log(`doc created in repo ${this.platform}`, this.docHandle.documentId);
@@ -168,17 +170,34 @@ export class Tub extends EventEmitter {
     }
     return undefined;
   }
-  addObject({ model, drop }: { model: string, drop: LocalizedDrop }): void {
+  addObject(drop: LocalizedDrop): void {
     const internalDrop = localizedDropToInternal(this.platform, drop, (model: string, localId: string): string => {
       const indexKey = getIndexKey({ platform: this.platform, model, localId });
       const tubsId = this.getDictValue(indexKey, undefined, true);
       return tubsId;
     });
-    console.log(`Adding ${model} drop`, drop, internalDrop);
-    const indexKey = getIndexKey({ platform: this.platform, model, localId: drop.localId });
+    // console.log(`Adding ${drop.model} drop`, drop, internalDrop);
+    const indexKey = getIndexKey({ platform: this.platform, model: drop.model, localId: drop.localId });
     this.setDictValue(indexKey, undefined, internalDrop.tubsId);
-    const objectKey = getObjectKey({ model, tubsId: internalDrop.tubsId });
+    const objectKey = getObjectKey({ model: drop.model, tubsId: internalDrop.tubsId });
     this.setDictValue(objectKey, undefined, internalDrop);
+    // console.log('object added', this.docHandle.docSync());
   }
 }
 
+export async function createTubs(names: string[], equivalencesMaps: Equivalences[]): Promise<Tub[]> {
+  if (names.length === 0) {
+    return [];
+  }
+
+  const tubs = [
+    new Tub(names[0], equivalencesMaps[0]),
+  ];
+  const docUrl = await tubs[0].createDoc();
+
+  for (let i=1; i < names.length; i++) {
+    tubs[i] = new Tub(names[i], equivalencesMaps[i]);
+    await tubs[i].setDoc(docUrl);
+  }
+  return tubs;
+}

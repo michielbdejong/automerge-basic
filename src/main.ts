@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { createServer, IncomingMessage, ServerResponse } from 'http';
-import { Tub, Equivalences } from './tub.js';
+import { Tub, createTubs } from './tub.js';
 // import { getIndexKey } from './utils.js';
 import { SlackClient } from './SlackClient.js';
 import { SolidClient } from './SolidClient.js';
@@ -25,23 +25,6 @@ async function runSolid(solidTub: Tub): Promise<void> {
 async function runSlack(slackTub: Tub): Promise<void> {
   const slack = new SlackClient('', slackTub);
   await slack.connect(8080);
-}
-
-async function createTubs(names: string[], equivalencesMaps: Equivalences[]): Promise<Tub[]> {
-  if (names.length === 0) {
-    return [];
-  }
-
-  const tubs = [
-    new Tub(names[0], equivalencesMaps[0]),
-  ];
-  const docUrl = await tubs[0].createDoc();
-
-  for (let i=1; i < names.length; i++) {
-    tubs[i] = new Tub(names[i], equivalencesMaps[i]);
-    await tubs[i].setDoc(docUrl);
-  }
-  return tubs;
 }
 
 async function run(): Promise<void> {
