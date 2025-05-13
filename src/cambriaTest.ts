@@ -36,7 +36,6 @@ lens:
 //           name: foreignIds
 //           host: event_payload
 
-
 // - mapping:
 //     - model: event_type
 //         - message: from_tubs
@@ -60,24 +59,26 @@ async function run(): Promise<void> {
   const drop: MessageDrop = {
     localId: undefined,
     foreignIds: {
-      solid: 'https://michielbdejong.solidcommunity.net/IndividualChats/bridged-from-slack/2025/05/12/chat.ttl#Msg1747070109746',
-      tubs: 'd8f1fcca-b1e7-4f62-bcd9-4512346ceb65'
+      solid:
+        'https://michielbdejong.solidcommunity.net/IndividualChats/bridged-from-slack/2025/05/12/chat.ttl#Msg1747070109746',
+      tubs: 'd8f1fcca-b1e7-4f62-bcd9-4512346ceb65',
     },
     model: 'message',
     text: 'vc',
     date: new Date('2025-05-12T17:15:09.000Z'),
     authorId: 'U0816RHEE85',
-    channelId: 'C08RHPHV05D'
+    channelId: 'C08RHPHV05D',
   };
   // Cambria chokes on explicitly undefined fields, so remove it:
   if (typeof drop.localId === 'undefined') {
     delete drop.localId;
-  }  const newDoc = applyLensToDoc(lens, drop);
+  }
+  const newDoc = applyLensToDoc(lens, drop);
   console.log(newDoc);
 
   const fromSlack: IMessage = {
     ts: '1234.567',
-    text: 'Hello', 
+    text: 'Hello',
     user: 'U0816RHEE85',
     channel: 'C08RHPHV05D',
     metadata: {
@@ -96,7 +97,6 @@ async function run(): Promise<void> {
 
 // ...
 run();
-
 
 // output:
 // {
