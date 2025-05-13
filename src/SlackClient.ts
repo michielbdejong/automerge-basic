@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { EventEmitter } from 'node:events';
+import { loadYamlLens, reverseLens, applyLensToDoc, LensSource } from 'cambria';
 const bolt = await import('@slack/bolt');
 import { Tub } from './tub.js';
 import { ChannelDrop, AuthorDrop, MessageDrop } from './drops.js';
@@ -8,16 +9,22 @@ const App = bolt.default.App;
 
 const BOLT_PORT = 7000;
 export interface IMessage {
-  client_msg_id: string;
-  type: string;
+  // client_msg_id: string;
+  // type: string;
   text: string;
   user: string;
   ts: string;
-  blocks: Block[];
-  team: string;
+  // blocks: Block[];
+  // team: string;
   channel: string;
-  event_ts: string;
-  channel_type: string;
+  // event_ts: string;
+  // channel_type: string;
+  metadata?: {
+    event_type?: string,
+    event_payload?: {
+      foreignIds?: object,
+    },
+  },
 }
 
 export interface Block {
@@ -53,6 +60,24 @@ export interface User {
   has_2fa: boolean;
 }
 
+const lensYaml = `
+lens:
+- remove: { name: model, type: string }
+- remove: { name: date, type: date }
+- rename:
+    source: authorId
+    destination: user
+- rename:
+    source: channelId
+    destination: channel
+`;
+// - rename:
+//     source: localId
+//     destination: ts
+// - add:
+//     name: metadata
+//     type: object
+
 export class SlackClient extends EventEmitter {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private app: any;
@@ -60,6 +85,7 @@ export class SlackClient extends EventEmitter {
   private logouts: { [nonce: string]: string } = {};
   private expressFullUrl: string;
   private tub: Tub;
+  private lens: LensSource;
   constructor(expressFullUrl: string, tub: Tub) {
     super();
     this.app = new App({
@@ -71,6 +97,53 @@ export class SlackClient extends EventEmitter {
     });
     this.expressFullUrl = expressFullUrl;
     this.tub = tub;
+    this.lens = loadYamlLens(lensYaml);
+
+  }
+  dropToSlackMessage(drop: MessageDrop): IMessage {
+    console.log('applying lens', drop);
+    // Cambria chokes on explicitly undefined fields, so remove it:
+    if (typeof drop.localId === 'undefined') {
+      delete drop.localId;
+    }
+    const fromCambria: {
+      channel: string,
+      user: string,
+      ts: string,
+      foreignIds: { [platform: string]: string },
+      text: string,
+    } = applyLensToDoc(this.lens, drop);
+    
+    return {
+      ts: drop.localId,
+      text: fromCambria.text,
+      user: fromCambria.user,
+      channel: fromCambria.channel,
+      metadata: {
+        event_type: 'from_tubs',
+        event_payload: {
+          foreignIds: fromCambria.foreignIds,
+        },
+      },
+    };
+  }
+  slackMessageToDrop(message: IMessage): MessageDrop {
+    const lens = reverseLens(this.lens);
+    console.log('applying reverse lens', message);
+    const fromCambria = applyLensToDoc(lens, message);
+    const ret = {
+      model: 'message',
+      localId: message.ts,
+      text: fromCambria.text,
+      authorId: fromCambria.authorId,
+      channelId: fromCambria.channelId,
+      foreignIds: {},
+      date: new Date(parseFloat(fromCambria.localId) * 1000),
+    };
+    if (typeof fromCambria.metadata?.event_payload?.foreignIds === 'object') {
+      ret.foreignIds = fromCambria.metadata!.event_payload!.foreignIds
+    }
+    return ret as MessageDrop;
   }
   async createOnPlatform(drop: MessageDrop): Promise<void> {
     // const existing = await this.app.client.search.messages({
@@ -92,16 +165,7 @@ export class SlackClient extends EventEmitter {
     }
     console.log('creating on Slack:', drop);
     // https://docs.slack.dev/reference/methods/chat.postMessage
-    const created = await this.app.client.chat.postMessage({
-      channel: drop.channelId,
-      text: drop.text,
-      metadata: {
-        event_type: 'from_tubs',
-        event_payload: {
-          foreignIds: drop.foreignIds,
-        },
-      },
-    });
+    const created = await this.app.client.chat.postMessage(this.dropToSlackMessage(drop));
     if (created.ok) {
       drop.localId = created.ts;
       // const localKey = this.tub.getIndexKey({ model: 'message', localId: created.ts });
@@ -150,15 +214,8 @@ export class SlackClient extends EventEmitter {
         foreignIds: {},
         model: 'author',
       };
-      const messageDrop: MessageDrop = {
-        localId: message.ts,
-        model: 'message',
-        foreignIds: {},
-        date: new Date(parseFloat(message.ts) * 1000),
-        text: message.text,
-        channelId: message.channel,
-        authorId: message.user,
-      };
+      const messageDrop: MessageDrop = this.slackMessageToDrop(message);
+      
       console.log('Slack incoming:', messageDrop.text);
       this.tub.addObjects([channelDrop, authorDrop, messageDrop]);
     });
