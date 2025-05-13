@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { EventEmitter } from 'node:events';
+import { loadYamlLens, reverseLens, applyLensToDoc, LensSource } from 'cambria';
 const bolt = await import('@slack/bolt');
 import { Tub } from './tub.js';
 import { ChannelDrop, AuthorDrop, MessageDrop } from './drops.js';
@@ -59,6 +60,13 @@ export interface User {
   has_2fa: boolean;
 }
 
+const lensYaml = `
+lens:
+ - add:
+    name: completed
+    type: boolean
+`;
+
 export class SlackClient extends EventEmitter {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private app: any;
@@ -66,6 +74,7 @@ export class SlackClient extends EventEmitter {
   private logouts: { [nonce: string]: string } = {};
   private expressFullUrl: string;
   private tub: Tub;
+  private lens: LensSource;
   constructor(expressFullUrl: string, tub: Tub) {
     super();
     this.app = new App({
@@ -77,8 +86,15 @@ export class SlackClient extends EventEmitter {
     });
     this.expressFullUrl = expressFullUrl;
     this.tub = tub;
+    this.lens = loadYamlLens(lensYaml);
+
   }
   dropToSlackMessage(drop: MessageDrop): IMessage {
+    const ret = {};
+    applyLensToDoc(this.lens, drop, ret);
+    console.log(ret);
+    throw new Error('kar');
+
     return {
       ts: drop.localId,
       text: drop.text,
@@ -93,19 +109,24 @@ export class SlackClient extends EventEmitter {
     }
   }
   slackMessageToDrop(message: IMessage): MessageDrop {
-    const ret = {
-      model: 'message',
-      localId: message.ts,
-      text: message.text,
-      authorId: message.user,
-      channelId: message.channel,
-      foreignIds: {},
-      date: new Date(parseFloat(message.ts) * 1000),
-    };
-    if (typeof message.metadata?.event_payload?.foreignIds === 'object') {
-      ret.foreignIds = message.metadata!.event_payload!.foreignIds
-    }
-    return ret;
+    const lens = reverseLens(this.lens);
+    const ret = {};
+    applyLensToDoc(lens, message, ret);
+    console.log(ret);
+    throw new Error('kar');
+    // const ret = {
+    //   model: 'message',
+    //   localId: message.ts,
+    //   text: message.text,
+    //   authorId: message.user,
+    //   channelId: message.channel,
+    //   foreignIds: {},
+    //   date: new Date(parseFloat(message.ts) * 1000),
+    // };
+    // if (typeof message.metadata?.event_payload?.foreignIds === 'object') {
+    //   ret.foreignIds = message.metadata!.event_payload!.foreignIds
+    // }
+    return ret as MessageDrop;
   }
   async createOnPlatform(drop: MessageDrop): Promise<void> {
     // const existing = await this.app.client.search.messages({

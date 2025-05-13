@@ -47,6 +47,7 @@
     "@slack/bolt": "^4.2.1",
     "@solid-data-modules/chats-rdflib": "^0.5.0",
     "@types/ws": "^8.18.0",
+    "cambria": "^0.1.2",
     "css-authn": "^0.2.1",
     "dotenv": "^16.5.0",
     "rdflib": "^2.2.37",
