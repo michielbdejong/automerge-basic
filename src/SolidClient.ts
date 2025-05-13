@@ -88,7 +88,7 @@ export class SolidClient {
       authorWebId:
         drop.authorId ||
         'https://michielbdejong.solidcommunity.net/profile/card#me',
-    }
+    };
   }
   solidChatMessageToDrop(entry: {
     uri: string;
@@ -104,7 +104,7 @@ export class SolidClient {
       date: entry.date,
       authorId: entry.authorWebId,
       channelId: process.env.CHANNEL_IN_SOLID,
-    } as MessageDrop
+    } as MessageDrop;
   }
   async createOnPlatform(drop: MessageDrop): Promise<void> {
     console.log('creating on Solid:', drop);

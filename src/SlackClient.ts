@@ -20,11 +20,11 @@ export interface IMessage {
   // event_ts: string;
   // channel_type: string;
   metadata?: {
-    event_type?: string,
+    event_type?: string;
     event_payload?: {
-      foreignIds?: object,
-    },
-  },
+      foreignIds?: object;
+    };
+  };
 }
 
 export interface Block {
@@ -98,7 +98,6 @@ export class SlackClient extends EventEmitter {
     this.expressFullUrl = expressFullUrl;
     this.tub = tub;
     this.lens = loadYamlLens(lensYaml);
-
   }
   dropToSlackMessage(drop: MessageDrop): IMessage {
     console.log('applying lens', drop);
@@ -107,13 +106,13 @@ export class SlackClient extends EventEmitter {
       delete drop.localId;
     }
     const fromCambria: {
-      channel: string,
-      user: string,
-      ts: string,
-      foreignIds: { [platform: string]: string },
-      text: string,
+      channel: string;
+      user: string;
+      ts: string;
+      foreignIds: { [platform: string]: string };
+      text: string;
     } = applyLensToDoc(this.lens, drop);
-    
+
     return {
       ts: drop.localId,
       text: fromCambria.text,
@@ -141,7 +140,7 @@ export class SlackClient extends EventEmitter {
       date: new Date(parseFloat(fromCambria.localId) * 1000),
     };
     if (typeof fromCambria.metadata?.event_payload?.foreignIds === 'object') {
-      ret.foreignIds = fromCambria.metadata!.event_payload!.foreignIds
+      ret.foreignIds = fromCambria.metadata!.event_payload!.foreignIds;
     }
     return ret as MessageDrop;
   }
@@ -165,7 +164,9 @@ export class SlackClient extends EventEmitter {
     }
     console.log('creating on Slack:', drop);
     // https://docs.slack.dev/reference/methods/chat.postMessage
-    const created = await this.app.client.chat.postMessage(this.dropToSlackMessage(drop));
+    const created = await this.app.client.chat.postMessage(
+      this.dropToSlackMessage(drop),
+    );
     if (created.ok) {
       drop.localId = created.ts;
       // const localKey = this.tub.getIndexKey({ model: 'message', localId: created.ts });
@@ -215,7 +216,7 @@ export class SlackClient extends EventEmitter {
         model: 'author',
       };
       const messageDrop: MessageDrop = this.slackMessageToDrop(message);
-      
+
       console.log('Slack incoming:', messageDrop.text);
       this.tub.addObjects([channelDrop, authorDrop, messageDrop]);
     });
