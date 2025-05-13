@@ -65,8 +65,8 @@ lens:
 - rename:
     source: localId
     destination: ts
-- remove: { name: model }
-- remove: { name: date }
+- remove: { name: model, type: string }
+- remove: { name: date, type: date }
 - rename:
     source: authorId
     destination: user
