@@ -84,7 +84,9 @@ There, the model is converted to a `MessageDrop` object again, but this time the
 }
 ```
 
-[screencast](https://youtu.be/cf86sobTx8g)
+## Screencast
+
+[![screencast](https://img.youtube.com/vi/cf86sobTx8g/0.jpg)](https://www.youtube.com/watch?v=cf86sobTx8g)
 
 ## Try to run it
 
