@@ -84,6 +84,8 @@ There, the model is converted to a `MessageDrop` object again, but this time the
 }
 ```
 
+[screencast](https://youtu.be/cf86sobTx8g)
+
 ## Try to run it
 
 Configure the following values in `.env`:
