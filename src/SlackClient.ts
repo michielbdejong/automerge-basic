@@ -8,16 +8,22 @@ const App = bolt.default.App;
 
 const BOLT_PORT = 7000;
 export interface IMessage {
-  client_msg_id: string;
-  type: string;
+  // client_msg_id: string;
+  // type: string;
   text: string;
   user: string;
   ts: string;
-  blocks: Block[];
-  team: string;
+  // blocks: Block[];
+  // team: string;
   channel: string;
-  event_ts: string;
-  channel_type: string;
+  // event_ts: string;
+  // channel_type: string;
+  metadata?: {
+    event_type?: string,
+    event_payload?: {
+      foreignIds?: object,
+    },
+  },
 }
 
 export interface Block {
@@ -72,6 +78,35 @@ export class SlackClient extends EventEmitter {
     this.expressFullUrl = expressFullUrl;
     this.tub = tub;
   }
+  dropToSlackMessage(drop: MessageDrop): IMessage {
+    return {
+      ts: drop.localId,
+      text: drop.text,
+      user: drop.authorId,
+      channel: drop.channelId,
+      metadata: {
+        event_type: 'from_tubs',
+        event_payload: {
+          foreignIds: drop.foreignIds,
+        },
+      },
+    }
+  }
+  slackMessageToDrop(message: IMessage): MessageDrop {
+    const ret = {
+      model: 'message',
+      localId: message.ts,
+      text: message.text,
+      authorId: message.user,
+      channelId: message.channel,
+      foreignIds: {},
+      date: new Date(parseFloat(message.ts) * 1000),
+    };
+    if (typeof message.metadata?.event_payload?.foreignIds === 'object') {
+      ret.foreignIds = message.metadata!.event_payload!.foreignIds
+    }
+    return ret;
+  }
   async createOnPlatform(drop: MessageDrop): Promise<void> {
     // const existing = await this.app.client.search.messages({
     //   metadata: {
@@ -92,16 +127,7 @@ export class SlackClient extends EventEmitter {
     }
     console.log('creating on Slack:', drop);
     // https://docs.slack.dev/reference/methods/chat.postMessage
-    const created = await this.app.client.chat.postMessage({
-      channel: drop.channelId,
-      text: drop.text,
-      metadata: {
-        event_type: 'from_tubs',
-        event_payload: {
-          foreignIds: drop.foreignIds,
-        },
-      },
-    });
+    const created = await this.app.client.chat.postMessage(this.dropToSlackMessage(drop));
     if (created.ok) {
       drop.localId = created.ts;
       // const localKey = this.tub.getIndexKey({ model: 'message', localId: created.ts });
@@ -150,15 +176,8 @@ export class SlackClient extends EventEmitter {
         foreignIds: {},
         model: 'author',
       };
-      const messageDrop: MessageDrop = {
-        localId: message.ts,
-        model: 'message',
-        foreignIds: {},
-        date: new Date(parseFloat(message.ts) * 1000),
-        text: message.text,
-        channelId: message.channel,
-        authorId: message.user,
-      };
+      const messageDrop: MessageDrop = this.slackMessageToDrop(message);
+      
       console.log('Slack incoming:', messageDrop.text);
       this.tub.addObjects([channelDrop, authorDrop, messageDrop]);
     });

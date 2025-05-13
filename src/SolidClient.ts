@@ -14,6 +14,7 @@ import {
 // import { executeUpdate } from "@solid-data-modules/rdflib-utils";
 import ChatsModuleRdfLib, {
   ChatsModule,
+  PostMessageCommand,
 } from '@solid-data-modules/chats-rdflib';
 import { Tub } from './tub.js';
 import { ChannelDrop, AuthorDrop, MessageDrop } from './drops.js';
@@ -80,16 +81,35 @@ export class SolidClient {
     );
     return containerUri + dateFolders + '/chat.ttl';
   }
+  dropToSolidChatMessage(drop: MessageDrop): PostMessageCommand {
+    return {
+      chatUri: process.env.CHANNEL_IN_SOLID,
+      text: drop.text,
+      authorWebId:
+        drop.authorId ||
+        'https://michielbdejong.solidcommunity.net/profile/card#me',
+    }
+  }
+  solidChatMessageToDrop(entry: {
+    uri: string;
+    text: string;
+    date: Date;
+    authorWebId: string;
+  }): MessageDrop {
+    return {
+      localId: entry.uri,
+      foreignIds: {},
+      model: 'message',
+      text: entry.text,
+      date: entry.date,
+      authorId: entry.authorWebId,
+      channelId: process.env.CHANNEL_IN_SOLID,
+    } as MessageDrop
+  }
   async createOnPlatform(drop: MessageDrop): Promise<void> {
     console.log('creating on Solid:', drop);
     if (drop.model === 'message') {
-      const solidChatMessage = {
-        chatUri: process.env.CHANNEL_IN_SOLID,
-        text: drop.text,
-        authorWebId:
-          drop.authorId ||
-          'https://michielbdejong.solidcommunity.net/profile/card#me',
-      };
+      const solidChatMessage = this.dropToSolidChatMessage(drop);
       console.log(solidChatMessage);
       drop.localId = await this.module.postMessage(solidChatMessage);
       const promises = Object.keys(drop.foreignIds).map(async (platform) => {
@@ -156,15 +176,7 @@ export class SolidClient {
       foreignIds: {},
       model: 'author',
     };
-    const messageDrop: MessageDrop = {
-      localId: entry.uri,
-      foreignIds: {},
-      model: 'message',
-      text: entry.text,
-      date: entry.date,
-      authorId: entry.authorWebId,
-      channelId: process.env.CHANNEL_IN_SOLID,
-    } as MessageDrop;
+    const messageDrop: MessageDrop = this.solidChatMessageToDrop(entry);
     const sameAsNodes = this.store.each(
       sym(entry.uri),
       owl('sameAs'),
