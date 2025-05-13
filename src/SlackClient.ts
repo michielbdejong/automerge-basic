@@ -62,9 +62,6 @@ export interface User {
 
 const lensYaml = `
 lens:
-- rename:
-    source: localId
-    destination: ts
 - remove: { name: model, type: string }
 - remove: { name: date, type: date }
 - rename:
@@ -74,6 +71,9 @@ lens:
     source: channelId
     destination: channel
 `;
+// - rename:
+//     source: localId
+//     destination: ts
 // - add:
 //     name: metadata
 //     type: object
@@ -101,6 +101,11 @@ export class SlackClient extends EventEmitter {
 
   }
   dropToSlackMessage(drop: MessageDrop): IMessage {
+    console.log('applying lens', drop);
+    // Cambria chokes on explicitly undefined fields, so remove it:
+    if (typeof drop.localId === 'undefined') {
+      delete drop.localId;
+    }
     const fromCambria: {
       channel: string,
       user: string,
@@ -110,7 +115,7 @@ export class SlackClient extends EventEmitter {
     } = applyLensToDoc(this.lens, drop);
     
     return {
-      ts: fromCambria.ts,
+      ts: drop.localId,
       text: fromCambria.text,
       user: fromCambria.user,
       channel: fromCambria.channel,
@@ -124,10 +129,11 @@ export class SlackClient extends EventEmitter {
   }
   slackMessageToDrop(message: IMessage): MessageDrop {
     const lens = reverseLens(this.lens);
+    console.log('applying reverse lens', message);
     const fromCambria = applyLensToDoc(lens, message);
     const ret = {
       model: 'message',
-      localId: fromCambria.localId,
+      localId: message.ts,
       text: fromCambria.text,
       authorId: fromCambria.authorId,
       channelId: fromCambria.channelId,

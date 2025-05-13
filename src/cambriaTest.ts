@@ -5,9 +5,6 @@ import { IMessage } from './SlackClient.js';
 
 const lensYaml = `
 lens:
-- rename:
-    source: localId
-    destination: ts
 - remove: { name: model, type: string }
 - remove: { name: date, type: date }
 - rename:
@@ -17,6 +14,9 @@ lens:
     source: channelId
     destination: channel
 `;
+// - rename:
+//     source: localId
+//     destination: ts
 // - add:
 //     name: metadata
 //     type: object
@@ -58,18 +58,21 @@ lens:
 async function run(): Promise<void> {
   const lens: LensSource = loadYamlLens(lensYaml);
   const drop: MessageDrop = {
-    model: 'message',
-    localId: '1234.567',
+    localId: undefined,
     foreignIds: {
-      tubs: '12345',
-      solid: 'https://example.com/#Msg',
+      solid: 'https://michielbdejong.solidcommunity.net/IndividualChats/bridged-from-slack/2025/05/12/chat.ttl#Msg1747070109746',
+      tubs: 'd8f1fcca-b1e7-4f62-bcd9-4512346ceb65'
     },
-    date: new Date(),
-    text: 'Hello', 
+    model: 'message',
+    text: 'vc',
+    date: new Date('2025-05-12T17:15:09.000Z'),
     authorId: 'U0816RHEE85',
-    channelId: 'C08RHPHV05D',
+    channelId: 'C08RHPHV05D'
   };
-  const newDoc = applyLensToDoc(lens, drop);
+  // Cambria chokes on explicitly undefined fields, so remove it:
+  if (typeof drop.localId === 'undefined') {
+    delete drop.localId;
+  }  const newDoc = applyLensToDoc(lens, drop);
   console.log(newDoc);
 
   const fromSlack: IMessage = {
@@ -99,14 +102,16 @@ run();
 // {
 //   channel: 'C08RHPHV05D',
 //   user: 'U0816RHEE85',
-//   ts: '1234.567',
-//   foreignIds: { tubs: '12345', solid: 'https://example.com/#Msg' },
-//   text: 'Hello'
+//   foreignIds: {
+//     solid: 'https://michielbdejong.solidcommunity.net/IndividualChats/bridged-from-slack/2025/05/12/chat.ttl#Msg1747070109746',
+//     tubs: 'd8f1fcca-b1e7-4f62-bcd9-4512346ceb65'
+//   },
+//   text: 'vc'
 // }
 // {
-//   localId: '1234.567',
 //   authorId: 'U0816RHEE85',
 //   channelId: 'C08RHPHV05D',
+//   ts: '1234.567',
 //   text: 'Hello',
 //   metadata: { event_type: 'from_tubs', event_payload: { foreignIds: [Object] } },
 //   model: ''
