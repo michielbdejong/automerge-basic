@@ -45,7 +45,7 @@ TUBS knows that fields ending in `Id` refer to other objects. So far relations a
 
 In future versions of TUBS it will also be possible to have named relations (such as 'parent') whose model is for instance of the same schema.
 
-In the next step, TUBS distinguishes between properties and relations (that end in `-Id`), looks up the identifiers for these relations, and converts from this platform-specific format to a generic one:
+In the next step, TUBS distinguishes between properties such as `text` and relations such as `authorId` (based on the `-Id` field key suffix), looks up the identifiers for these relations, and converts from this platform-specific format to a generic one:
 ```javascript
 {
   tubsId: '8f836179-d309-40c9-b184-caaaf343cfc5',
