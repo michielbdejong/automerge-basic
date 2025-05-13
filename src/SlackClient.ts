@@ -62,10 +62,21 @@ export interface User {
 
 const lensYaml = `
 lens:
- - add:
-    name: completed
-    type: boolean
+- rename:
+    source: localId
+    destination: ts
+- remove: { name: model }
+- remove: { name: date }
+- rename:
+    source: authorId
+    destination: user
+- rename:
+    source: channelId
+    destination: channel
 `;
+// - add:
+//     name: metadata
+//     type: object
 
 export class SlackClient extends EventEmitter {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -90,42 +101,42 @@ export class SlackClient extends EventEmitter {
 
   }
   dropToSlackMessage(drop: MessageDrop): IMessage {
-    const ret = {};
-    applyLensToDoc(this.lens, drop, ret);
-    console.log(ret);
-    throw new Error('kar');
-
+    const fromCambria: {
+      channel: string,
+      user: string,
+      ts: string,
+      foreignIds: { [platform: string]: string },
+      text: string,
+    } = applyLensToDoc(this.lens, drop);
+    
     return {
-      ts: drop.localId,
-      text: drop.text,
-      user: drop.authorId,
-      channel: drop.channelId,
+      ts: fromCambria.ts,
+      text: fromCambria.text,
+      user: fromCambria.user,
+      channel: fromCambria.channel,
       metadata: {
         event_type: 'from_tubs',
         event_payload: {
-          foreignIds: drop.foreignIds,
+          foreignIds: fromCambria.foreignIds,
         },
       },
-    }
+    };
   }
   slackMessageToDrop(message: IMessage): MessageDrop {
     const lens = reverseLens(this.lens);
-    const ret = {};
-    applyLensToDoc(lens, message, ret);
-    console.log(ret);
-    throw new Error('kar');
-    // const ret = {
-    //   model: 'message',
-    //   localId: message.ts,
-    //   text: message.text,
-    //   authorId: message.user,
-    //   channelId: message.channel,
-    //   foreignIds: {},
-    //   date: new Date(parseFloat(message.ts) * 1000),
-    // };
-    // if (typeof message.metadata?.event_payload?.foreignIds === 'object') {
-    //   ret.foreignIds = message.metadata!.event_payload!.foreignIds
-    // }
+    const fromCambria = applyLensToDoc(lens, message);
+    const ret = {
+      model: 'message',
+      localId: fromCambria.localId,
+      text: fromCambria.text,
+      authorId: fromCambria.authorId,
+      channelId: fromCambria.channelId,
+      foreignIds: {},
+      date: new Date(parseFloat(fromCambria.localId) * 1000),
+    };
+    if (typeof fromCambria.metadata?.event_payload?.foreignIds === 'object') {
+      ret.foreignIds = fromCambria.metadata!.event_payload!.foreignIds
+    }
     return ret as MessageDrop;
   }
   async createOnPlatform(drop: MessageDrop): Promise<void> {
