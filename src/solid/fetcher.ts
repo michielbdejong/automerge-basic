@@ -11,7 +11,7 @@ export async function getFetcher() {
   return (
     ...args: Parameters<typeof authenticatedFetch>
   ): Promise<Response> => {
-    // console.log('fetching!', args[0]);
+    console.log('fetching', args[0]);
     return authenticatedFetch.apply(this, args);
   };
 }
