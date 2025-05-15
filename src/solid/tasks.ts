@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   getJsonLdLinkField,
   getJsonLdId,
@@ -100,6 +101,8 @@ type InterpretedIssue = {
 
 type Interpretation = {
   tracker: {
+    indexUri: string;
+    stateUri: string;
     author: string;
     created: Date;
     issueClass: string;
@@ -110,27 +113,6 @@ type Interpretation = {
     [uri: string]: InterpretedIssue;
   };
 };
-
-export async function fetchTracker(
-  uri: string,
-  authenticatedFetcher: typeof globalThis.fetch,
-): Promise<{ index: TrackerIndex; state: TrackerState }> {
-  const indexRet = await authenticatedFetcher(uri, {
-    headers: {
-      Accept: 'application/ld+json',
-    },
-  });
-  const index: TrackerIndex = await indexRet.json();
-  const stateDocUri =
-    index[0]['http://www.w3.org/2005/01/wf/flow#stateStore'][0]['@id'];
-  const stateRet = await authenticatedFetcher(stateDocUri, {
-    headers: {
-      Accept: 'application/ld+json',
-    },
-  });
-  const state: TrackerState = await stateRet.json();
-  return { index, state };
-}
 
 function lastWord(str: string): string {
   const slashParts = str.split('/');
@@ -161,16 +143,22 @@ function getIssueState(entry: object): string | undefined {
   return undefined;
 }
 
-export function interpret({
+function interpret({
   index,
   state,
 }: {
   index: TrackerIndex;
   state: TrackerState;
 }): Interpretation {
+  const indexUri = getJsonLdId(index[0]);
+  const stateUri = getJsonLdLinkField(
+    index[0],
+    'http://www.w3.org/2005/01/wf/flow#stateStore',
+  );
   const ret = {
     tracker: {
-      uri: getJsonLdId(index[0]),
+      indexUri,
+      stateUri,
       author: getJsonLdLinkField(
         index[0],
         'http://purl.org/dc/elements/1.1/author',
@@ -207,11 +195,6 @@ export function interpret({
     issue: string;
     comment: string;
   }[] = [];
-  const indexUri = getJsonLdId(index[0]);
-  const stateUri = getJsonLdLinkField(
-    index[0],
-    'http://www.w3.org/2005/01/wf/flow#stateStore',
-  );
   state.forEach((entry: TrackerStateEntry) => {
     // console.log('state entry', JSON.stringify(entry, null, 2));
     if (isUplink(entry, indexUri, stateUri)) {
@@ -277,4 +260,94 @@ export function interpret({
     },
   );
   return ret;
+}
+
+export async function fetchTracker(
+  uri: string,
+  authenticatedFetcher: typeof globalThis.fetch,
+): Promise<Interpretation> {
+  const indexRet = await authenticatedFetcher(uri, {
+    headers: {
+      Accept: 'application/ld+json',
+    },
+  });
+  const index: TrackerIndex = await indexRet.json();
+  const stateDocUri =
+    index[0]['http://www.w3.org/2005/01/wf/flow#stateStore'][0]['@id'];
+  const stateRet = await authenticatedFetcher(stateDocUri, {
+    headers: {
+      Accept: 'application/ld+json',
+    },
+  });
+  const state: TrackerState = await stateRet.json();
+  return interpret({ index, state });
+}
+
+export async function addIssue(
+  localState: Interpretation,
+  { title, description }: { title: string; description: string },
+  authenticatedFetcher: typeof globalThis.fetch,
+): Promise<string> {
+  const id = `${localState.tracker.stateUri}#Iss${randomUUID()}`;
+  console.log(
+    localState.tracker.stateUri,
+    title,
+    description,
+    typeof authenticatedFetcher,
+  );
+  const inserts = [
+    `<${id}> <http://www.w3.org/2005/01/wf/flow#tracker> <${localState.tracker.indexUri}>.`,
+    `<${id}> <http://purl.org/dc/elements/1.1/title> "${title}".`,
+    `<${id}> <http://www.w3.org/2005/01/wf/flow#description> "${description}".`,
+    `<${id}> <http://purl.org/dc/terms/created> "${new Date().toISOString()}"^^<http://www.w3.org/2001/XMLSchema#dateTime>.`,
+  ];
+  const body = `@prefix solid: <http://www.w3.org/ns/solid/terms#>.
+<>
+  a solid:InsertDeletePatch;
+  solid:inserts {
+  ${inserts.join('\n')}
+}.`;
+  const ret = await authenticatedFetcher(localState.tracker.stateUri, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'text/n3',
+    },
+    body,
+  });
+  console.log(ret.status);
+  return id;
+}
+
+export async function addComment(
+  localState: Interpretation,
+  { author, text }: { author: string; text: string },
+  authenticatedFetcher: typeof globalThis.fetch,
+): Promise<string> {
+  const id = `${localState.tracker.stateUri}#Msg${randomUUID()}`;
+  console.log(
+    localState.tracker.stateUri,
+    author,
+    text,
+    typeof authenticatedFetcher,
+  );
+  const inserts = [
+    `<${id}> <http://xmlns.com/foaf/0.1/maker> "${author}".`,
+    `<${id}> <http://rdfs.org/sioc/ns#content> "${text}".`,
+    `<${id}> <http://purl.org/dc/terms/created> "${new Date().toISOString()}"^^<http://www.w3.org/2001/XMLSchema#dateTime>.`,
+  ];
+  const body = `@prefix solid: <http://www.w3.org/ns/solid/terms#>.
+<>
+  a solid:InsertDeletePatch;
+  solid:inserts {
+  ${inserts.join('\n')}
+}.`;
+  const ret = await authenticatedFetcher(localState.tracker.stateUri, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'text/n3',
+    },
+    body,
+  });
+  console.log(ret.status);
+  return id;
 }
