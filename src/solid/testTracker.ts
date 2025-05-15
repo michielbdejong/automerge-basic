@@ -4,7 +4,9 @@ import { fetchTracker } from './tasks.js';
 
 async function test(): Promise<void> {
   const fetcher = await getFetcher();
-  fetchTracker(process.env.TRACKER_IN_SOLID, fetcher);
+  const { index, state} = await fetchTracker(process.env.TRACKER_IN_SOLID, fetcher);
+  console.log(JSON.stringify(index, null, 2));
+  console.log(JSON.stringify(state, null, 2));
 }
 
 //...
