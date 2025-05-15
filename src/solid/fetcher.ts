@@ -8,7 +8,7 @@ export async function getFetcher() {
     provider: process.env.SOLID_SERVER,
   });
   // console.log('obtained authenticated fetcher');
-  return (...args): Promise<Response> => {
+  return (...args: Parameters<typeof authenticatedFetch>): Promise<Response> => {
     // console.log('fetching!', args[0]);
     return authenticatedFetch.apply(this, args);
   };
