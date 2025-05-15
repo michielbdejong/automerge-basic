@@ -110,3 +110,24 @@ export type MessageDrop = LocalizedDrop & {
 export type ChannelDrop = LocalizedDrop & {};
 
 export type AuthorDrop = LocalizedDrop & {};
+
+export type TrackerDrop = LocalizedDrop & {
+  authorId: string;
+  created: Date;
+  initialState: string;
+  assigneeClass: string;
+};
+
+export type IssueDrop = LocalizedDrop & {
+  title: string;
+  description: string;
+  authorId: string;
+  created: Date;
+}
+
+export type CommentDrop = LocalizedDrop & {
+  issueId: string;
+  text: string;
+  authorId: string;
+  created: Date;
+}

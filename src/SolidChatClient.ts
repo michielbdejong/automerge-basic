@@ -1,5 +1,4 @@
 import { Agent } from 'undici';
-import { v7 } from 'css-authn';
 import {
   Fetcher,
   graph,
@@ -18,12 +17,14 @@ import ChatsModuleRdfLib, {
 } from '@solid-data-modules/chats-rdflib';
 import { Tub } from './tub.js';
 import { ChannelDrop, AuthorDrop, MessageDrop } from './drops.js';
+// import { fetchTracker } from './solid/tasks.js';
+import { getFetcher } from './solid/fetcher.js';
 
 const owl = Namespace('http://www.w3.org/2002/07/owl#');
 
 // setGlobalDispatcher(new Agent({bodyTimeout: 0}));
 
-export class SolidClient {
+export class SolidChatClient {
   fetch: typeof globalThis.fetch;
   store: IndexedFormula;
   fetcher: Fetcher;
@@ -38,15 +39,7 @@ export class SolidClient {
   }
   async connect(): Promise<void> {
     console.log(`Connecting to Solid...`);
-    const authenticatedFetch = await v7.getAuthenticatedFetch({
-      email: process.env.SOLID_EMAIL,
-      password: process.env.SOLID_PASSWORD,
-      provider: process.env.SOLID_SERVER,
-    });
-    this.fetch = (...args): Promise<Response> => {
-      // console.log('fetching!', args[0]);
-      return authenticatedFetch.apply(this, args);
-    };
+    this.fetch = await getFetcher();
     this.initSolidDataModule();
   }
 
@@ -249,6 +242,9 @@ export class SolidClient {
       }),
     );
   }
+  // async fetchTracker(): Promise<void> {
+  //   return fetchTracker(process.env.TRACKER_IN_SOLID, this.fetch);
+  // }
   async listen(): Promise<void> {
     this.tub.on('create', this.createOnPlatform.bind(this));
     this.tub.on('foreign-id-added', this.foreignIdAdded.bind(this));

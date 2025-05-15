@@ -3,7 +3,7 @@ import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { Tub, createTubs } from './tub.js';
 // import { getIndexKey } from './utils.js';
 import { SlackClient } from './SlackClient.js';
-import { SolidClient } from './SolidClient.js';
+import { SolidChatClient } from './SolidChatClient.js';
 
 createServer((req: IncomingMessage, res: ServerResponse) => {
   req.on('data', (chunk) => {
@@ -13,7 +13,7 @@ createServer((req: IncomingMessage, res: ServerResponse) => {
 }).listen(8080);
 
 async function runSolid(solidTub: Tub): Promise<void> {
-  const solid = new SolidClient(solidTub);
+  const solid = new SolidChatClient(solidTub);
   await solid.connect();
   await solid.listen();
   // await solid.createChat('https://michielbdejong.solidcommunity.net/IndividualChats/bla', 'Bla Chat');
