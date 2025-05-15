@@ -1,4 +1,4 @@
-interface Lens<From, To> {
+export interface Lens<From, To> {
   forward(from: From): To;
   backward(to: To): From;
 }

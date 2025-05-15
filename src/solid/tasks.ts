@@ -86,29 +86,36 @@ type TrackerIndex = [
 type TrackerStateEntry = UpLink | Issue | IssueComment;
 type TrackerState = TrackerStateEntry[];
 
-type InterpretedComment = {
+export type InterpretedComment = {
+  uri: string;
   author: string;
   created: Date;
   text: string;
+  issueUri: string;
 };
 
-type InterpretedIssue = {
+export type InterpretedIssue = {
+  uri: string;
+  author: string;
   title: string;
   created: Date;
   description: string;
-  comments: InterpretedComment[];
+  trackerIndexUri: string;
+  commentUris: string[];
 };
 
-type Interpretation = {
-  tracker: {
-    indexUri: string;
-    stateUri: string;
-    author: string;
-    created: Date;
-    issueClass: string;
-    initialState: string;
-    assigneeClass: string;
-  };
+export type InterpretedTracker = {
+  indexUri: string;
+  stateUri: string;
+  author: string;
+  created: Date;
+  issueClass: string;
+  initialState: string;
+  assigneeClass: string;
+};
+
+export type Interpretation = {
+  tracker: InterpretedTracker;
   issues: {
     [uri: string]: InterpretedIssue;
   };
@@ -191,10 +198,6 @@ function interpret({
   const comments: {
     [uri: string]: InterpretedComment;
   } = {};
-  const commentLinks: {
-    issue: string;
-    comment: string;
-  }[] = [];
   state.forEach((entry: TrackerStateEntry) => {
     // console.log('state entry', JSON.stringify(entry, null, 2));
     if (isUplink(entry, indexUri, stateUri)) {
@@ -215,24 +218,12 @@ function interpret({
           entry,
           'http://www.w3.org/2005/01/wf/flow#description',
         ),
-        comments: [],
+        trackerIndexUri: indexUri,
+        commentUris: getJsonLdStringFieldMulti(
+          entry,
+          'http://www.w3.org/2005/01/wf/flow#message',
+        ),
       } as InterpretedIssue;
-      // console.log('issue found', ret.issues[getJsonLdId(entry)]);
-      const commentLinksForIssue = getJsonLdStringFieldMulti(
-        entry,
-        'http://www.w3.org/2005/01/wf/flow#message',
-      );
-      commentLinksForIssue.forEach((link: string) => {
-        const mapping: {
-          issue: string;
-          comment: string;
-        } = {
-          issue: getJsonLdId(entry),
-          comment: link,
-        };
-        // console.log('mapping found', mapping);
-        commentLinks.push(mapping);
-      });
       return;
     }
     const comment = {
@@ -254,12 +245,6 @@ function interpret({
     console.error(entry);
     throw new Error('entry not interpreted');
   });
-  // console.log('processing comment links', commentLinks);
-  commentLinks.forEach(
-    ({ issue, comment }: { issue: string; comment: string }) => {
-      ret.issues[issue].comments.push(comments[comment]);
-    },
-  );
   return ret;
 }
 

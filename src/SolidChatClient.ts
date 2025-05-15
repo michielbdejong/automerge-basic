@@ -24,7 +24,7 @@ const owl = Namespace('http://www.w3.org/2002/07/owl#');
 
 // setGlobalDispatcher(new Agent({bodyTimeout: 0}));
 
-export class SolidClient {
+export class SolidChatClient {
   fetch: typeof globalThis.fetch;
   store: IndexedFormula;
   fetcher: Fetcher;
