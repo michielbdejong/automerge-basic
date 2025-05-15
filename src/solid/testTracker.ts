@@ -12,12 +12,13 @@ async function test(): Promise<void> {
     title: `Added through Solid Data Modules at ${new Date().toUTCString()}`,
     description: 'What do you want me to say...',
   };
+  const issueUri = await addIssue(before, newIssue, fetcher);
+  console.log('Issue created', issueUri);
   const newComment = {
+    issueUri,
     author: 'https://michielbdejong.solidcommunity.net/profile/card#me',
     text: `That's a good question at ${new Date().toUTCString()}`,
   };
-  const issueUri = await addIssue(before, newIssue, fetcher);
-  console.log('Issue created', issueUri);
   const commentUri = await addComment(before, newComment, fetcher);
   console.log('Comment created', commentUri);
   const after = await fetchTracker(process.env.TRACKER_IN_SOLID, fetcher);

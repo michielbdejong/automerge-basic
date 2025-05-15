@@ -240,6 +240,7 @@ function interpret({
       text: getJsonLdStringField(entry, 'http://rdfs.org/sioc/ns#content'),
       created: getJsonLdDateField(entry, 'http://purl.org/dc/terms/created'),
     };
+    console.log(comment);
     if (
       typeof comment.author === 'string' &&
       typeof comment.text === 'string' &&
@@ -296,6 +297,7 @@ export async function addIssue(
     typeof authenticatedFetcher,
   );
   const inserts = [
+    `<${id}> a <http://www.w3.org/2005/01/wf/flow#Open>.`,
     `<${id}> <http://www.w3.org/2005/01/wf/flow#tracker> <${localState.tracker.indexUri}>.`,
     `<${id}> <http://purl.org/dc/elements/1.1/title> "${title}".`,
     `<${id}> <http://www.w3.org/2005/01/wf/flow#description> "${description}".`,
@@ -320,7 +322,11 @@ export async function addIssue(
 
 export async function addComment(
   localState: Interpretation,
-  { author, text }: { author: string; text: string },
+  {
+    issueUri,
+    author,
+    text,
+  }: { issueUri: string; author: string; text: string },
   authenticatedFetcher: typeof globalThis.fetch,
 ): Promise<string> {
   const id = `${localState.tracker.stateUri}#Msg${randomUUID()}`;
@@ -331,7 +337,8 @@ export async function addComment(
     typeof authenticatedFetcher,
   );
   const inserts = [
-    `<${id}> <http://xmlns.com/foaf/0.1/maker> "${author}".`,
+    `<${issueUri}> <http://www.w3.org/2005/01/wf/flow#message> <${id}>.`,
+    `<${id}> <http://xmlns.com/foaf/0.1/maker> <${author}>.`,
     `<${id}> <http://rdfs.org/sioc/ns#content> "${text}".`,
     `<${id}> <http://purl.org/dc/terms/created> "${new Date().toISOString()}"^^<http://www.w3.org/2001/XMLSchema#dateTime>.`,
   ];
