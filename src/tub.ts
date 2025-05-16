@@ -18,6 +18,7 @@ import {
 import {
   LocalizedDrop,
   InternalDrop,
+  MessageDrop,
   localizedDropToInternal,
   internalDropToLocalized,
 } from './drops.js';
@@ -53,6 +54,25 @@ export type Table = {
 };
 
 
+export interface IMessage {
+  // client_msg_id: string;
+  // type: string;
+  text: string;
+  user: string;
+  ts: string;
+  // blocks: Block[];
+  // team: string;
+  channel: string;
+  // event_ts: string;
+  // channel_type: string;
+  metadata?: {
+    event_type?: string;
+    event_payload?: {
+      foreignIds?: object;
+    };
+  };
+}
+
 export class Tub extends EventEmitter {
   tables: Table[];
   docHandle: DocHandle<unknown>;
@@ -75,6 +95,36 @@ export class Tub extends EventEmitter {
   addTable(t: Table) {
     this.tables.push(t);
   }
+  dropToSlackMessage(drop: MessageDrop): IMessage {
+    return {
+      ts: drop.localId,
+      text: drop.text,
+      user: drop.authorId,
+      channel: drop.channelId,
+      metadata: {
+        event_type: 'from_tubs',
+        event_payload: {
+          foreignIds: drop.foreignIds,
+        },
+      },
+    };
+  }
+  slackMessageToDrop(message: IMessage): MessageDrop {
+    const ret = {
+      model: 'message',
+      localId: message.ts,
+      text: message.text,
+      authorId: message.user,
+      channelId: message.channel,
+      foreignIds: {},
+      date: new Date(parseFloat(message.ts) * 1000),
+    };
+    if (typeof message.metadata?.event_payload?.foreignIds === 'object') {
+      ret.foreignIds = message.metadata!.event_payload!.foreignIds;
+    }
+    return ret as MessageDrop;
+  }
+
   private checkIndexCoverage(): void {
     // if there is an index for this platform that also exists on another platform,
     // emit an event to trigger a check if that foreignId is linked.
@@ -290,7 +340,12 @@ export class Tub extends EventEmitter {
       this.identifierToLocal.bind(this),
     );
   }
-  addObject(drop: LocalizedDrop): void {
+  addObject(model: string, obj: object): void {
+    let drop: LocalizedDrop;
+    if ((model === 'message') && (this.platform === 'slack')) {
+      drop = this.slackMessageToDrop(obj as IMessage);
+    }
+    // TODO: Add other conversions, and in reverse direction.
     if (
       typeof this.equivalences[drop.model] !== 'undefined' &&
       typeof this.equivalences[drop.model][drop.localId] !== 'undefined'
@@ -358,9 +413,9 @@ export class Tub extends EventEmitter {
     this.setDictValue(objectKey, internalDrop);
     // console.log('object added', JSON.stringify(this.docHandle.docSync(), null, 2));
   }
-  addObjects(drops: LocalizedDrop[]): void {
+  addObjects(model: string, drops: object[]): void {
     drops.forEach((drop) => {
-      this.addObject(drop);
+      this.addObject(model, drop);
     });
   }
 }

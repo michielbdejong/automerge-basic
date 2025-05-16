@@ -148,7 +148,7 @@ export class SolidChatClient {
       });
       await Promise.all(promises);
       console.log('Created on Solid as:', drop.localId);
-      this.tub.addObject(drop); // writing back the localId that was minted
+      this.tub.addObject('message', drop); // writing back the localId that was minted
     }
     // console.log(`added message to Solid chat`, messageUri);
   }
@@ -263,7 +263,9 @@ export class SolidChatClient {
           );
         }
         console.log('Solid incoming:', messageDrop.text);
-        this.tub.addObjects([channelDrop, authorDrop, messageDrop]);
+        this.tub.addObject('channel', channelDrop);
+        this.tub.addObject('author', authorDrop);
+        this.tub.addObject('message', messageDrop);
       }),
     );
   }
@@ -274,7 +276,7 @@ export class SolidChatClient {
     this.tub.on('create', this.createOnPlatform.bind(this));
     this.tub.on('foreign-id-added', this.foreignIdAdded.bind(this));
     const topic = process.env.CHANNEL_IN_SOLID;
-    this.tub.addObject({ localId: topic, foreignIds: {}, model: 'channel' });
+    this.tub.addObject('channel', { localId: topic, foreignIds: {}, model: 'channel' });
     const todayDoc = this.getTodayDoc(topic);
     // FIXME: discover this URL from the response header link:
     const streamingUrl = `https://solidcommunity.net/.notifications/StreamingHTTPChannel2023/${encodeURIComponent(todayDoc)}`;
