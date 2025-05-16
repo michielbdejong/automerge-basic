@@ -1,6 +1,5 @@
 import { randomBytes } from 'node:crypto';
 import { EventEmitter } from 'node:events';
-import { loadYamlLens, reverseLens, applyLensToDoc, LensSource } from 'cambria';
 const bolt = await import('@slack/bolt');
 import { Tub } from './tub.js';
 import { ChannelDrop, AuthorDrop, MessageDrop } from './drops.js';
@@ -60,24 +59,6 @@ export interface User {
   has_2fa: boolean;
 }
 
-const lensYaml = `
-lens:
-- remove: { name: model, type: string }
-- remove: { name: date, type: date }
-- rename:
-    source: authorId
-    destination: user
-- rename:
-    source: channelId
-    destination: channel
-`;
-// - rename:
-//     source: localId
-//     destination: ts
-// - add:
-//     name: metadata
-//     type: object
-
 export class SlackClient extends EventEmitter {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private app: any;
@@ -85,7 +66,6 @@ export class SlackClient extends EventEmitter {
   private logouts: { [nonce: string]: string } = {};
   private expressFullUrl: string;
   private tub: Tub;
-  private lens: LensSource;
   constructor(expressFullUrl: string, tub: Tub) {
     super();
     this.app = new App({
@@ -97,50 +77,57 @@ export class SlackClient extends EventEmitter {
     });
     this.expressFullUrl = expressFullUrl;
     this.tub = tub;
-    this.lens = loadYamlLens(lensYaml);
+    this.tub.addTable({
+      name: 'message',
+      columns: [
+        { name: 'ts', type: 'string', isIndex: true },
+        { name: 'text', type: 'string' },
+        { name: 'user', type: 'string', isRelation: true, toTable: 'author' },
+        { name: 'channel', type: 'string', isRelation: true, toTable: 'channel' },
+      ],
+      canStoreMetadata: true,
+    });
+    this.tub.addTable({
+      name: 'author',
+      columns: [
+        { name: 'id', type: 'string', isIndex: true },
+      ],
+      canStoreMetadata: true,
+    });
+    this.tub.addTable({
+      name: 'channel',
+      columns: [
+        { name: 'id', type: 'string', isIndex: true },
+      ],
+      canStoreMetadata: true,
+    });
   }
   dropToSlackMessage(drop: MessageDrop): IMessage {
-    console.log('applying lens', drop);
-    // Cambria chokes on explicitly undefined fields, so remove it:
-    if (typeof drop.localId === 'undefined') {
-      delete drop.localId;
-    }
-    const fromCambria: {
-      channel: string;
-      user: string;
-      ts: string;
-      foreignIds: { [platform: string]: string };
-      text: string;
-    } = applyLensToDoc(this.lens, drop);
-
     return {
       ts: drop.localId,
-      text: fromCambria.text,
-      user: fromCambria.user,
-      channel: fromCambria.channel,
+      text: drop.text,
+      user: drop.authorId,
+      channel: drop.channelId,
       metadata: {
         event_type: 'from_tubs',
         event_payload: {
-          foreignIds: fromCambria.foreignIds,
+          foreignIds: drop.foreignIds,
         },
       },
     };
   }
   slackMessageToDrop(message: IMessage): MessageDrop {
-    const lens = reverseLens(this.lens);
-    console.log('applying reverse lens', message);
-    const fromCambria = applyLensToDoc(lens, message);
     const ret = {
       model: 'message',
       localId: message.ts,
-      text: fromCambria.text,
-      authorId: fromCambria.authorId,
-      channelId: fromCambria.channelId,
+      text: message.text,
+      authorId: message.user,
+      channelId: message.channel,
       foreignIds: {},
-      date: new Date(parseFloat(fromCambria.localId) * 1000),
+      date: new Date(parseFloat(message.ts) * 1000),
     };
-    if (typeof fromCambria.metadata?.event_payload?.foreignIds === 'object') {
-      ret.foreignIds = fromCambria.metadata!.event_payload!.foreignIds;
+    if (typeof message.metadata?.event_payload?.foreignIds === 'object') {
+      ret.foreignIds = message.metadata!.event_payload!.foreignIds;
     }
     return ret as MessageDrop;
   }

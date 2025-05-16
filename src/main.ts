@@ -49,3 +49,74 @@ async function run(): Promise<void> {
 
 // ...
 run();
+
+
+
+// export function installLens(tubs: { [platform: string]: Tub}) {
+//   message - message
+//     uri - ts // lookup table between platform-supplied identifiers. In Solid the client has some freedom over choosing them, but there are rules attached regarding dereferencability,
+//              // so when looking at Solid as a platform, we may include the publishing capabilities of the client as part of the platform, then it feels more like a regular API-based platform.
+//     text - text // identity mapping
+//     date - ts //  programmatic one-to-one conversion
+//     user -[author.id || person.webId ]- authorWebId // lookup table between platform-supplied identifiers
+//     channel - chatUri // lookup table between platform-supplied identifiers
+//   author - person
+//   channel - chat
+
+//   where do I store those lookup tables? in foreignIds! But then I have a problem when I want to refer to a channel that needs to be created. So maybe use UUIDs after all?
+//   or expose `channel: () => object` and use uuid's internally.
+
+//   So really what I'm saying is it's the same as MessageDrop <> InternalDrop, except there is a SlackMessageBlob and a Solid MessageBlob
+// }
+// Slack
+// this.tub.addTable({
+//   name: 'message',
+//   columns: [
+//     { name: 'ts', type: 'string', isIndex: true },
+//     { name: 'text', type: 'string' },
+//     { name: 'user', type: 'string', isRelation: true, toTable: 'author' },
+//     { name: 'channel', type: 'string', isRelation: true, toTable: 'channel' },
+//   ],
+//   canStoreMetadata: true,
+// });
+// this.tub.addTable({
+//   name: 'author',
+//   columns: [
+//     { name: 'id', type: 'string', isIndex: true },
+//   ],
+//   canStoreMetadata: true,
+// });
+// this.tub.addTable({
+//   name: 'channel',
+//   columns: [
+//     { name: 'id', type: 'string', isIndex: true },
+//   ],
+//   canStoreMetadata: true,
+// });
+
+// Solid
+// this.tub.addTable({
+//   name: 'message',
+//   columns: [
+//     { name: 'uri', type: 'string', isIndex: true },
+//     { name: 'text', type: 'string' },
+//     { name: 'date', type: 'date' },
+//     { name: 'authorWebId', type: 'string', isRelation: true, toTable: 'person' },
+//     { name: 'chatUri', type: 'string', isRelation: true, toTable: 'chat' },
+//   ],
+//   canStoreMetadata: true,
+// });
+// this.tub.addTable({
+//   name: 'person',
+//   columns: [
+//     { name: 'webId', type: 'string', isIndex: true },
+//   ],
+//   canStoreMetadata: true,
+// });
+// this.tub.addTable({
+//   name: 'chat',
+//   columns: [
+//     { name: 'uri', type: 'string', isIndex: true },
+//   ],
+//   canStoreMetadata: true,
+// });

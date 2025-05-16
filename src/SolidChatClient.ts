@@ -33,6 +33,31 @@ export class SolidChatClient {
   tub: Tub;
   constructor(tub: Tub) {
     this.tub = tub;
+    this.tub.addTable({
+      name: 'message',
+      columns: [
+        { name: 'uri', type: 'string', isIndex: true },
+        { name: 'text', type: 'string' },
+        { name: 'date', type: 'date' },
+        { name: 'authorWebId', type: 'string', isRelation: true, toTable: 'person' },
+        { name: 'chatUri', type: 'string', isRelation: true, toTable: 'chat' },
+      ],
+      canStoreMetadata: true,
+    });
+    this.tub.addTable({
+      name: 'person',
+      columns: [
+        { name: 'id', type: 'string', isIndex: true },
+      ],
+      canStoreMetadata: true,
+    });
+    this.tub.addTable({
+      name: 'chat',
+      columns: [
+        { name: 'id', type: 'string', isIndex: true },
+      ],
+      canStoreMetadata: true,
+    });
     setInterval(() => {
       this.fetchChat();
     }, 5000);

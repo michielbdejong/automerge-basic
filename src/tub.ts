@@ -32,7 +32,29 @@ import {
 //   }
 // }
 
+export type Column = {
+  name: string;
+  type: string;
+}
+
+export type IndexColumn = Column & {
+  isIndex: true
+};
+
+export type RelationColumn = Column & {
+  isRelation: true
+  toTable: string;
+};
+
+export type Table = {
+  name: string,
+  columns: (Column | IndexColumn | RelationColumn)[],
+  canStoreMetadata: boolean,
+};
+
+
 export class Tub extends EventEmitter {
+  tables: Table[];
   docHandle: DocHandle<unknown>;
   platform: string;
   creating: {
@@ -50,7 +72,9 @@ export class Tub extends EventEmitter {
       this.checkCoverage();
     }, 10000);
   }
-
+  addTable(t: Table) {
+    this.tables.push(t);
+  }
   private checkIndexCoverage(): void {
     // if there is an index for this platform that also exists on another platform,
     // emit an event to trigger a check if that foreignId is linked.
