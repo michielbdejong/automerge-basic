@@ -8,16 +8,20 @@ export class DevonianTable<Model> extends EventEmitter {
   rows: Model[] = [];
   constructor(client: DevonianClient<Model>) {
     super();
-    this.on('add', (obj: Model) => {
+    this.on('add-from-lens', (obj: Model) => {
       client.add(obj);
     });
-    client.on('add', (obj: Model) => {
-      this.add(obj);
+    client.on('incoming', (obj: Model) => {
+      this.addFromClient(obj);
     });
   }
-  async add(obj: Model): Promise<void> {
+  async addFromLens(obj: Model): Promise<void> {
     this.rows.push(obj);
-    this.emit('add', obj);
+    this.emit('add-from-lens', obj);
+  }
+  async addFromClient(obj: Model): Promise<void> {
+    this.rows.push(obj);
+    this.emit('add-from-client', obj);
   }
 };
 
@@ -27,11 +31,13 @@ export class DevonianLens<LeftModel, RightModel> {
   constructor(left: DevonianTable<any>, right: DevonianTable<any>, leftToRight: (input: LeftModel) => RightModel, rightToLeft: (input: RightModel) => LeftModel) {
     this.left = left;
     this.right = right;
-    left.on('add', (added: LeftModel) => {
-      right.add(leftToRight(added));
+    left.on('add-from-client', (added: LeftModel) => {
+      // console.log('lens forwards addition event from left to right');
+      right.addFromLens(leftToRight(added));
     });
-    right.on('add', (added: RightModel) => {
-      left.add(rightToLeft(added));
+    right.on('add-from-client', (added: RightModel) => {
+      // console.log('lens forwards addition event from right to left');
+      left.addFromLens(rightToLeft(added));
     });
   }
 }

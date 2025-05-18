@@ -33,7 +33,7 @@ export type SolidMessage = {
 };
 
 export class SolidMessageClient extends DevonianClient<SolidMessage> {
-  index: DevonianIndex;
+  private index: DevonianIndex;
   constructor(index: DevonianIndex) {
     super();
     this.index = index;
@@ -43,7 +43,7 @@ export class SolidMessageClient extends DevonianClient<SolidMessage> {
     });
   }
 
-  storeIdentitiesFromSolid(input: SolidMessage) {
+  private storeIdentitiesFromSolid(input: SolidMessage) {
     this.index.storeIdentitiesFrom('message', 'solid', input.uri, input.foreignIds);
   }
 
