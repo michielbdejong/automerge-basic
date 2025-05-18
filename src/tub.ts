@@ -22,7 +22,15 @@ import {
   localizedDropToInternal,
   internalDropToLocalized,
 } from './drops.js';
+import {
+  PostMessageCommand,
+} from '@solid-data-modules/chats-rdflib';
 // import { LocalizedDrop, localizedDropToInternal } from './drops.js';
+
+export type SolidChatMessage = {
+  sdmPost: PostMessageCommand,
+  sameAs: string[],
+};
 
 // example, depending on .env, the Slack Tub could have this Equivalences object:
 // {
@@ -92,7 +100,7 @@ export class Tub extends EventEmitter {
       this.checkCoverage();
     }, 10000);
   }
-  addTable(t: Table) {
+  addTable(t: Table): void {
     this.tables.push(t);
   }
   dropToSlackMessage(drop: MessageDrop): IMessage {
@@ -124,7 +132,45 @@ export class Tub extends EventEmitter {
     }
     return ret as MessageDrop;
   }
-
+  dropToSolidChatMessage(drop: MessageDrop): SolidChatMessage {
+    return {
+      sdmPost: {
+        chatUri: process.env.CHANNEL_IN_SOLID,
+        text: drop.text,
+        authorWebId:
+          drop.authorId ||
+          'https://michielbdejong.solidcommunity.net/profile/card#me',
+      },
+      sameAs: Object.keys(drop.foreignIds).map((otherPlatform: string) => `https://tubsproject.org/id/${otherPlatform}/${drop.model}/${drop.foreignIds[otherPlatform]}`),
+    };
+  }
+  solidChatMessageToDrop(entry: SolidChatMessage): MessageDrop {
+    const ret = {
+      localId: '',//entry.sdmPost.uri,
+      foreignIds: {},
+      model: 'message',
+      text: entry.sdmPost.text,
+      date: new Date(),//entry.sdmPost.date,
+      authorId: entry.sdmPost.authorWebId,
+      channelId: process.env.CHANNEL_IN_SOLID,
+    };
+    // console.log(`found sameAsNode for ${entry.uri}`, entry.sameAs);
+    for (let i = 0; i < entry.sameAs.length; i++) {
+      if (
+        entry.sameAs[i].startsWith('https://tubsproject.org/id/')
+      ) {
+        const parts = entry.sameAs[i].split('/');
+        // `https://tubsproject.org/id/${otherPlatform}/message/bla`
+        //    0   1   2             3        4            5     6
+        const otherPlatform = parts[4];
+        ret.foreignIds[otherPlatform] = entry.sameAs[i].substring(
+          `https://tubsproject.org/id/${otherPlatform}/message/`.length,
+        );
+      }
+    }
+    
+    return ret as MessageDrop;
+  }
   private checkIndexCoverage(): void {
     // if there is an index for this platform that also exists on another platform,
     // emit an event to trigger a check if that foreignId is linked.
@@ -344,6 +390,8 @@ export class Tub extends EventEmitter {
     let drop: LocalizedDrop;
     if ((model === 'message') && (this.platform === 'slack')) {
       drop = this.slackMessageToDrop(obj as IMessage);
+    } else {
+      drop = obj as LocalizedDrop;
     }
     // TODO: Add other conversions, and in reverse direction.
     if (

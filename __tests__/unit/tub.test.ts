@@ -32,7 +32,7 @@ describe('Tub', async () => {
     //     resolve(drop);
     //   });
     // });
-    tubs[0].addObject(drop);
+    tubs[0].addObject('cow', drop);
     const onOneBefore = tubs[0].getObject({ model: 'cow', localId: 'test' });
     const tubsId = onOneBefore.foreignIds.tubs;
     expect(typeof tubsId).toEqual('string');
@@ -81,7 +81,7 @@ describe('Tub', async () => {
     tubs[1].on('create', (drop: LocalizedDrop) => {
       fired.push(drop);
     });
-    tubs[0].addObject(drop);
+    tubs[0].addObject('horse', drop);
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(fired).toEqual([
       {

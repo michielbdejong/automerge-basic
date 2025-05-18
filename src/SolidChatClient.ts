@@ -7,16 +7,15 @@ import {
   IndexedFormula,
   sym,
   Namespace,
-  isNamedNode,
+  // isNamedNode,
   st,
 } from 'rdflib';
 // import { executeUpdate } from "@solid-data-modules/rdflib-utils";
 import ChatsModuleRdfLib, {
   ChatsModule,
-  PostMessageCommand,
 } from '@solid-data-modules/chats-rdflib';
-import { Tub } from './tub.js';
-import { ChannelDrop, AuthorDrop, MessageDrop } from './drops.js';
+import { Tub, SolidChatMessage } from './tub.js';
+import { ChannelDrop, AuthorDrop } from './drops.js';
 // import { fetchTracker } from './solid/tasks.js';
 import { getFetcher } from './solid/fetcher.js';
 
@@ -99,57 +98,32 @@ export class SolidChatClient {
     );
     return containerUri + dateFolders + '/chat.ttl';
   }
-  dropToSolidChatMessage(drop: MessageDrop): PostMessageCommand {
-    return {
-      chatUri: process.env.CHANNEL_IN_SOLID,
-      text: drop.text,
-      authorWebId:
-        drop.authorId ||
-        'https://michielbdejong.solidcommunity.net/profile/card#me',
-    };
-  }
-  solidChatMessageToDrop(entry: {
-    uri: string;
-    text: string;
-    date: Date;
-    authorWebId: string;
-  }): MessageDrop {
-    return {
-      localId: entry.uri,
-      foreignIds: {},
-      model: 'message',
-      text: entry.text,
-      date: entry.date,
-      authorId: entry.authorWebId,
-      channelId: process.env.CHANNEL_IN_SOLID,
-    } as MessageDrop;
-  }
-  async createOnPlatform(drop: MessageDrop): Promise<void> {
-    console.log('creating on Solid:', drop);
-    if (drop.model === 'message') {
-      const solidChatMessage = this.dropToSolidChatMessage(drop);
-      console.log(solidChatMessage);
-      drop.localId = await this.module.postMessage(solidChatMessage);
-      const promises = Object.keys(drop.foreignIds).map(async (platform) => {
-        const messageNode = sym(drop.localId);
+
+  async createOnPlatform(solidChatMessage:SolidChatMessage): Promise<void> {
+    console.log('creating on Solid:', solidChatMessage);
+    // if (solidChatMessage.model === 'message') {
+      // const solidChatMessage = this.dropToSolidChatMessage(drop);
+      // console.log(solidChatMessage);
+      const localId = await this.module.postMessage(solidChatMessage.sdmPost);
+      const promises = solidChatMessage.sameAs.map(async (platformUri) => {
+        const messageNode = sym(localId);
         await this.updater.updateMany(
           [],
           [
             st(
               messageNode,
               owl('sameAs'),
-              sym(
-                `https://tubsproject.org/id/${platform}/${drop.model}/${drop.foreignIds[platform]}`,
-              ),
+              sym(platformUri),
               messageNode.doc(),
             ),
           ],
         );
       });
       await Promise.all(promises);
-      console.log('Created on Solid as:', drop.localId);
-      this.tub.addObject('message', drop); // writing back the localId that was minted
-    }
+      console.log('Created on Solid as:', localId);
+
+      this.tub.addObject('message', Object.assign(solidChatMessage, { localId })); // writing back the localId that was minted
+    // }
     // console.log(`added message to Solid chat`, messageUri);
   }
   async foreignIdAdded(
@@ -183,7 +157,7 @@ export class SolidChatClient {
     text: string;
     date: Date;
     authorWebId: string;
-  }): [ChannelDrop, AuthorDrop, MessageDrop] {
+  }): [ChannelDrop, AuthorDrop, SolidChatMessage] {
     const channelDrop: ChannelDrop = {
       localId: process.env.CHANNEL_IN_SOLID,
       foreignIds: {},
@@ -194,28 +168,17 @@ export class SolidChatClient {
       foreignIds: {},
       model: 'author',
     };
-    const messageDrop: MessageDrop = this.solidChatMessageToDrop(entry);
-    const sameAsNodes = this.store.each(
-      sym(entry.uri),
-      owl('sameAs'),
-      null,
-      sym(entry.uri).doc(),
-    );
-    // console.log(`found sameAsNode for ${entry.uri}`, sameAsNodes);
-    for (let i = 0; i < sameAsNodes.length; i++) {
-      if (
-        isNamedNode(sameAsNodes[i]) &&
-        sameAsNodes[i].value.startsWith('https://tubsproject.org/id/')
-      ) {
-        const parts = sameAsNodes[i].value.split('/');
-        // `https://tubsproject.org/id/${otherPlatform}/message/bla`
-        //    0   1   2             3        4            5     6
-        const otherPlatform = parts[4];
-        messageDrop.foreignIds[otherPlatform] = sameAsNodes[i].value.substring(
-          `https://tubsproject.org/id/${otherPlatform}/message/`.length,
-        );
-      }
-    }
+    const messageDrop = {
+      sdmPost: Object.assign(entry, {
+        chatUri: process.env.CHANNEL_IN_SOLID,
+      }),
+      sameAs: this.store.each(
+        sym(entry.uri),
+        owl('sameAs'),
+        null,
+        sym(entry.uri).doc(),
+      ).map((node) => node.value),
+    };
     // console.log('entryToDrops', entry, channelDrop, authorDrop, messageDrop);
     return [channelDrop, authorDrop, messageDrop];
   }
@@ -255,17 +218,17 @@ export class SolidChatClient {
     // console.log(latestMessages);
     await Promise.all(
       latestMessages.map(async (entry) => {
-        const [channelDrop, authorDrop, messageDrop] = this.entryToDrops(entry);
-        if (typeof messageDrop.channelId !== 'string') {
+        const [channelDrop, authorDrop, solidChatMessage] = this.entryToDrops(entry);
+        if (typeof solidChatMessage.sdmPost.chatUri !== 'string') {
           console.error(
             'weird, no channel found for this entry of latestMessages from the chat SDM?',
             entry,
           );
         }
-        console.log('Solid incoming:', messageDrop.text);
+        console.log('Solid incoming:', solidChatMessage.sdmPost.text);
         this.tub.addObject('channel', channelDrop);
         this.tub.addObject('author', authorDrop);
-        this.tub.addObject('message', messageDrop);
+        this.tub.addObject('message', solidChatMessage);
       }),
     );
   }

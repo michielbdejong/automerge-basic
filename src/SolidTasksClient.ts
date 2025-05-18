@@ -87,10 +87,10 @@ export class SolidClient {
     this.issueLens = new SolidIssueLens();
     this.commentLens = new SolidCommentLens();
   }
-  store(model: string, data: object) {
+  store(model: string, data: object): void {
     console.log(model, data);
   }
-  async connect() {
+  async connect(): Promise<void> {
     this.fetch = await getFetcher();
     const data = await fetchTracker(process.env.TRACKER_IN_SOLID, this.fetch);
     this.store('tracker', data.tracker);
