@@ -33,8 +33,8 @@ importers:
         specifier: ^0.2.1
         version: 0.2.1
       devonian:
-        specifier: ^0.1.2
-        version: 0.1.2
+        specifier: ^0.1.3
+        version: 0.1.3
       dotenv:
         specifier: ^16.5.0
         version: 16.5.0
@@ -963,8 +963,8 @@ packages:
     resolution: {integrity: sha512-3UDv+G9CsCKO1WKMGw9fwq/SWJYbI0c5Y7LU1AXYoDdbhE2AHQ6N6Nb34sG8Fj7T5APy8qXDCKuuIHd1BR0tVA==}
     engines: {node: '>=8'}
 
-  devonian@0.1.2:
-    resolution: {integrity: sha512-zUg33w59Xv3Gbfxj2lrCtbWQQf21i87yXw1n68logCJLSE1ZnFLEEJ99Im9YTXWiE78vcm3CS04cozdwppWjzg==}
+  devonian@0.1.3:
+    resolution: {integrity: sha512-l7TczHDZbYMeCJU7SIl9ao8QQbvV3Mt1JopW2Hi0uzu7WjiHp9GNNc8sLId9MNf+umQwmL5KO/LRjuAujVrVGw==}
     engines: {node: '>= 22.11 < 23'}
 
   diff@4.0.2:
@@ -2946,7 +2946,7 @@ snapshots:
   detect-libc@2.0.4:
     optional: true
 
-  devonian@0.1.2:
+  devonian@0.1.3:
     dependencies:
       tslib: 2.8.1
 
