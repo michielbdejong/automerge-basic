@@ -34,7 +34,7 @@ export class DevonianSolidSlackBridge {
           text: input.text,
           authorWebId: this.index.convert('person', 'slack', input.user, 'solid'),
           date: new Date(parseFloat(input.ts) * 1000),
-          foreignIds: this.index.convertForeignIds('slack', input.ts, input.metadata.devonian, 'solid'),
+          foreignIds: input.metadata?.devonian && this.index.convertForeignIds('slack', input.ts, input.metadata.devonian, 'solid'),
         };
         // console.log('converting from Slack to Solid', input, ret);
         return ret;

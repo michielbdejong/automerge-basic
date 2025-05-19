@@ -36,18 +36,13 @@ export class SolidMessageClient extends DevonianClient<SolidMessage> {
   constructor(index: DevonianIndex) {
     super();
     this.index = index;
-    this.on('add', (obj: SolidMessage) => {
-      console.log('incoming solid message');
-      this.storeIdentitiesFromSolid(obj);
-    });
   }
+  async connect(): Promise<void> {
 
-  private storeIdentitiesFromSolid(input: SolidMessage): void {
-    this.index.storeIdentitiesFrom('message', 'solid', input.uri, input.foreignIds);
   }
 
   async add(obj: SolidMessage): Promise<string> {
-    console.log('make an API call', obj);
+    console.log('make an API call', obj, typeof this.index);
     return 'uri';
   }
 }

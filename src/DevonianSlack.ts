@@ -52,7 +52,13 @@ export class SlackMessageClient extends DevonianClient<SlackMessage> {
       port: BOLT_PORT,
     });
   }
-
+  async connect(): Promise<void> {
+    this.app.message(async ({ message }) => {
+      console.log('emitting add-from-client', message);
+      this.emit('add-from-client', message);
+    });
+    await this.app.start(9999);
+  }
   storeIdentitiesFromSlack(input: SlackMessage): void {
       this.index.storeIdentitiesFrom('message', 'slack', input.ts, input.metadata.devonian);
     // }

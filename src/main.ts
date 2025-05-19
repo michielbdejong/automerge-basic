@@ -9,3 +9,7 @@ const index = new DevonianIndex();
 const solidMessageClient = new SolidMessageClient(index);
 const slackMessageClient = new SlackMessageClient(index);
 new DevonianSolidSlackBridge(index, solidMessageClient, slackMessageClient );
+await Promise.all([
+  slackMessageClient.connect(),
+  solidMessageClient.connect(),
+]);
