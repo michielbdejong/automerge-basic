@@ -1,7 +1,7 @@
 import { DevonianClient, DevonianIndex, ForeignIds } from 'devonian';
 
 
-export function solidSameasToForeignIds(sameAs: string[]): { [platform: string]: string } {
+export function solidSameasToForeignIds(sameAs: string[]): ForeignIds {
   const ret: { [platform: string]: string } = {};
   sameAs.forEach((uri: string) => {
     if (uri.startsWith(`https://tubsproject.org/id/message/`)) {
@@ -42,11 +42,11 @@ export class SolidMessageClient extends DevonianClient<SolidMessage> {
     });
   }
 
-  private storeIdentitiesFromSolid(input: SolidMessage) {
+  private storeIdentitiesFromSolid(input: SolidMessage): void {
     this.index.storeIdentitiesFrom('message', 'solid', input.uri, input.foreignIds);
   }
 
-  async add(obj: SolidMessage) {
+  async add(obj: SolidMessage): Promise<string> {
     console.log('make an API call', obj);
     return 'uri';
   }
