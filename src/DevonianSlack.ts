@@ -54,8 +54,6 @@ export class SlackMessageClient extends DevonianClient<SlackMessage> {
   }
 
   storeIdentitiesFromSlack(input: SlackMessage): void {
-    // if (typeof input.metadata === 'object' && input.metadata.event_type === 'devonian') {
-    //   const foreignIds = input.metadata.event_payload.foreignIds || {};
       this.index.storeIdentitiesFrom('message', 'slack', input.ts, input.metadata.devonian);
     // }
   }
@@ -67,15 +65,9 @@ export class SlackMessageClient extends DevonianClient<SlackMessage> {
       channel: obj.channel,
       metadata: obj.metadata,
     });
-    if (created.ok) {
-      obj.ts = created.ts;
-      // const localKey = this.tub.getIndexKey({ model: 'message', localId: created.ts });
-      // this.tub.setLocalId(localKey, tubsId);
-      // console.log('writing back localId from Slack creation', drop);
-      console.log('Stored on Slack as:', obj.ts);
-      // this.tub.addObject('message', obj);
+    if (!created.ok) {
+      throw new Error('Could not post message to Slack');
     }
-    return 'ts';
+    return created.ts;
   }
 }
-    
