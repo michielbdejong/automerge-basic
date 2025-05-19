@@ -41,7 +41,9 @@ describe('DevonianSolidSlackBridge', () => {
       channel: undefined,
       text: 'solid text',
       user: undefined,
-      foreignIds: { asdf: 'qwer', solid: 'https://example.com/chat/2025/05/05/chat.ttl#Msg1' }
+      metadata: {
+        devonian: { asdf: 'qwer', solid: 'https://example.com/chat/2025/05/05/chat.ttl#Msg1' }
+      },
     }]);
   });
 
@@ -51,8 +53,10 @@ describe('DevonianSolidSlackBridge', () => {
       channel: 'slack channel',
       user: 'slack user',
       text: 'slack text',
-      foreignIds: {
-        'asdf': 'qwer',
+      metadata: {
+        devonian: {
+          'asdf': 'qwer',
+        },
       },
     });
     await new Promise(resolve => setTimeout(resolve, 0));
