@@ -1,5 +1,4 @@
-import { DevonianClient } from './DevonianLens.js';
-import { DevonianIndex, ForeignIds } from './DevonianIndex.js';
+import { DevonianClient, DevonianIndex, ForeignIds } from 'devonian';
 
 export type SlackMessage = {
   ts?: string,

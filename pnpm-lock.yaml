@@ -32,6 +32,9 @@ importers:
       css-authn:
         specifier: ^0.2.1
         version: 0.2.1
+      devonian:
+        specifier: ^0.1.2
+        version: 0.1.2
       dotenv:
         specifier: ^16.5.0
         version: 16.5.0
@@ -959,6 +962,10 @@ packages:
   detect-libc@2.0.4:
     resolution: {integrity: sha512-3UDv+G9CsCKO1WKMGw9fwq/SWJYbI0c5Y7LU1AXYoDdbhE2AHQ6N6Nb34sG8Fj7T5APy8qXDCKuuIHd1BR0tVA==}
     engines: {node: '>=8'}
+
+  devonian@0.1.2:
+    resolution: {integrity: sha512-zUg33w59Xv3Gbfxj2lrCtbWQQf21i87yXw1n68logCJLSE1ZnFLEEJ99Im9YTXWiE78vcm3CS04cozdwppWjzg==}
+    engines: {node: '>= 22.11 < 23'}
 
   diff@4.0.2:
     resolution: {integrity: sha512-58lmxKSA4BNyLz+HHMUzlOEpg09FV+ev6ZMe3vJihgdxzgcwZ8VoEEPmALCZG9LmqfVoNMMKpttIYTVG6uDY7A==}
@@ -2938,6 +2945,10 @@ snapshots:
 
   detect-libc@2.0.4:
     optional: true
+
+  devonian@0.1.2:
+    dependencies:
+      tslib: 2.8.1
 
   diff@4.0.2: {}
 
