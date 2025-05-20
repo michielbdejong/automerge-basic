@@ -7,6 +7,7 @@ import { Agent } from 'undici';
 import {
   sym,
 } from 'rdflib';
+
 function getTodayDoc(chatUri: string): string {
   // FIXME: expose this code from https://github.com/solid-contrib/data-modules/blob/main/chats/rdflib/src/module/uris/mintMessageUri.ts
   if (!chatUri.endsWith('index.ttl#this')) {
@@ -39,11 +40,16 @@ export class SolidMessageClient extends DevonianClient<SolidMessage> {
   constructor(solidClient: SolidClient) {
     super();
     this.solidClient = solidClient;
-    this.module = new ChatsModuleRdfLib(this.solidClient);
+    this.module = new ChatsModuleRdfLib({
+      store: this.solidClient.store,
+      fetcher: this.solidClient.fetcher,
+      updater: this.solidClient.updater,
+    });
   }
   async connect(): Promise<void> {
     await this.solidClient.ensureConnected();
     const todayDoc = getTodayDoc(process.env.CHANNEL_IN_SOLID);
+    console.log('fetching todayDoc', todayDoc);
     // FIXME: discover this URL from the response header link:
     const streamingUrl = `https://solidcommunity.net/.notifications/StreamingHTTPChannel2023/${encodeURIComponent(todayDoc)}`;
     const res = await this.solidClient.fetch(streamingUrl, {

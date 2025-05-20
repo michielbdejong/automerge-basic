@@ -48,4 +48,4 @@ async function test(): Promise<void> {
 }
 
 //...
-test();
+// test();

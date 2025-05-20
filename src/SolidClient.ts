@@ -28,7 +28,7 @@ export class SolidClient {
       fetch: this.fetch,
     } as AutoInitOptions);
   }
-  async ensureConnected() {
+  async ensureConnected(): Promise<void> {
     if (!this.connecting) {
       this.connecting = this.connect();
     }
