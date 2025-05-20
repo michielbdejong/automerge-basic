@@ -1,32 +1,12 @@
 import 'dotenv/config';
-import { createServer, IncomingMessage, ServerResponse } from 'http';
-import { Tub, createTubs } from './tub.js';
-// import { getIndexKey } from './utils.js';
-import { SlackClient } from './SlackClient.js';
-import { SolidClient } from './SolidClient.js';
+import { DevonianIndex } from 'devonian';
+import { SolidMessageClient } from './DevonianSolid.js';
+import { SlackMessageClient } from './DevonianSlack.js';
+import { DevonianSolidSlackBridge } from './DevonianSolidSlackBridge.js';
 
-createServer((req: IncomingMessage, res: ServerResponse) => {
-  req.on('data', (chunk) => {
-    console.log(chunk);
-  });
-  res.end('ok');
-}).listen(8080);
-
-async function runSolid(solidTub: Tub): Promise<void> {
-  const solid = new SolidClient(solidTub);
-  await solid.connect();
-  await solid.listen();
-  // await solid.createChat('https://michielbdejong.solidcommunity.net/IndividualChats/bla', 'Bla Chat');
-  // const read = await solid.readChat('https://michielbdejong.solidcommunity.net/IndividualChats/blactbd1Z/index.ttl#this');
-  // console.log(read);
-}
-async function runSlack(slackTub: Tub): Promise<void> {
-  const slack = new SlackClient('', slackTub);
-  await slack.connect(8080);
-}
-
-async function run(): Promise<void> {
-  const [slackTub, solidTub] = await createTubs(['slack', 'solid'], {
+// ...
+const index = new DevonianIndex();
+index.storeEquivalences({
     channel: [
       {
         solid: process.env.CHANNEL_IN_SOLID,
@@ -35,17 +15,15 @@ async function run(): Promise<void> {
     ],
     author: [
       {
-        slack: 'U05TRV6UVPV',
-        solid: 'https://michielbdejong.solidcommunity.net/profile/card#me',
-      },
-      {
-        slack: 'U0816RHEE85',
-        solid: 'https://michielbdejong.solidcommunity.net/profile/card#me',
+        solid: process.env.USER_IN_SOLID,
+        slack: process.env.USER_IN_SLACK,
       },
     ],
-  });
-  await Promise.all([runSolid(solidTub), runSlack(slackTub)]);
-}
-
-// ...
-run();
+});
+const solidMessageClient = new SolidMessageClient();
+const slackMessageClient = new SlackMessageClient(index);
+new DevonianSolidSlackBridge(index, solidMessageClient, slackMessageClient );
+await Promise.all([
+  slackMessageClient.connect(),
+  solidMessageClient.connect(),
+]);
