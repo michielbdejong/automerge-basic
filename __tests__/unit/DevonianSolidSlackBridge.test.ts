@@ -42,10 +42,8 @@ describe('DevonianSolidSlackBridge', () => {
       text: 'solid text',
       user: undefined,
       metadata: {
-        entities: {
-          event_type: 'devonian',
-          event_payload: { asdf: 'qwer', solid: 'https://example.com/chat/2025/05/05/chat.ttl#Msg1' }
-        },
+        event_type: 'devonian',
+        event_payload: { asdf: 'qwer', solid: 'https://example.com/chat/2025/05/05/chat.ttl#Msg1' }
       },
     }]);
   });
