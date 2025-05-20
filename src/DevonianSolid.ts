@@ -1,16 +1,16 @@
 // import { DevonianClient, DevonianIndex, ForeignIds } from 'devonian';
 import { DevonianClient, ForeignIds } from 'devonian';
-// import { Agent } from 'undici';
+import { Agent } from 'undici';
 import {
   Fetcher,
   graph,
   UpdateManager,
   AutoInitOptions,
   IndexedFormula,
-  // sym,
-  // Namespace,
+  sym,
+  Namespace,
   // isNamedNode,
-  // st,
+  st,
 } from 'rdflib';
 // import { executeUpdate } from "@solid-data-modules/rdflib-utils";
 import ChatsModuleRdfLib, {
@@ -21,7 +21,9 @@ import ChatsModuleRdfLib, {
 // import { fetchTracker } from './solid/tasks.js';
 import { getFetcher } from './solid/fetcher.js';
 
-export function solidSameasToForeignIds(sameAs: string[]): ForeignIds {
+const owl = Namespace('http://www.w3.org/2002/07/owl#');
+
+function solidSameasToForeignIds(sameAs: string[]): ForeignIds {
   const ret: { [platform: string]: string } = {};
   sameAs.forEach((uri: string) => {
     if (uri.startsWith(`https://tubsproject.org/id/message/`)) {
@@ -32,15 +34,26 @@ export function solidSameasToForeignIds(sameAs: string[]): ForeignIds {
       }
     }
   });
+  console.log('converted sameAs uris', sameAs, ret);
   return ret;
 }
 
-export function foreignIdsToSolidSameas(foreignIds: object): string[] {
-  return Object.keys(foreignIds).map(otherPlatform => {
-    return `https://tubsproject.org/id/message/${otherPlatform}/${foreignIds[otherPlatform]}`;
-  });
+function getTodayDoc(chatUri: string): string {
+  // FIXME: expose this code from https://github.com/solid-contrib/data-modules/blob/main/chats/rdflib/src/module/uris/mintMessageUri.ts
+  if (!chatUri.endsWith('index.ttl#this')) {
+    throw new Error(
+      `Chat URI ${chatUri} does not end with the expected index.ttl#this, is it really the URI of a LongChat?`,
+    );
+  }
+  // note that this relies on server clocks being in sync
+  const date = new Date();
+  const dateFolders = date.toISOString().split('T')[0].replace(/-/g, '/');
+  const containerUri = chatUri.substring(
+    0,
+    chatUri.length - `index.ttl#this`.length,
+  );
+  return containerUri + dateFolders + '/chat.ttl';
 }
-
 
 export type SolidMessage = {
   uri?: string,
@@ -76,27 +89,49 @@ export class SolidMessageClient extends DevonianClient<SolidMessage> {
       fetcher: this.fetcher,
       updater: this.updater,
     });
-  }
-  async fetchChat(): Promise<void> {
-    const {
-      latestMessages,
-    }: {
-      uri: string;
-      name: string;
-      latestMessages: {
-        uri: string;
-        text: string;
-        date: Date;
-        authorWebId: string;
-      }[];
-    } = await this.module.readChat(process.env.CHANNEL_IN_SOLID);
-    latestMessages.map((entry) => {
-      this.emit('add-from-client', entry);
-    });
+    const todayDoc = getTodayDoc(process.env.CHANNEL_IN_SOLID);
+    // FIXME: discover this URL from the response header link:
+    const streamingUrl = `https://solidcommunity.net/.notifications/StreamingHTTPChannel2023/${encodeURIComponent(todayDoc)}`;
+    const res = await this.fetch(streamingUrl, {
+      dispatcher: new Agent({ bodyTimeout: 0 }),
+    } as RequestInit);
+    for await (const _notificationText of res.body.pipeThrough(new TextDecoderStream()) as unknown as {
+      [Symbol.asyncIterator](): AsyncIterableIterator<string>;
+    }) {
+      void _notificationText;
+      await this.fetcher.load(sym(todayDoc), { force: true });
+      const chat = await this.module.readChat(process.env.CHANNEL_IN_SOLID);
+      chat.latestMessages.map((entry) => {
+        this.emit('add-from-client', Object.assign(entry, {
+          chatUri: process.env.CHANNEL_IN_SOLID,
+          foreignIds: solidSameasToForeignIds(this.store.each(
+            sym(entry.uri),
+            owl('sameAs'),
+            null,
+            sym(entry.uri).doc(),
+          ).map((node) => node.value))
+        }));
+      });
+    }
   }
   async add(obj: SolidMessage): Promise<string> {
-    const ret = await this.module.postMessage(obj);
-    console.log('posted to Solid', obj, ret);
-    return ret;
+    const uri = await this.module.postMessage(obj);
+    console.log('posted to Solid', obj, uri);
+    const promises = Object.keys(obj.foreignIds).map(async (platform) => {
+        const messageNode = sym(uri);
+        await this.updater.updateMany(
+          [],
+          [
+            st(
+              messageNode,
+              owl('sameAs'),
+              sym(`https://tubsproject.org/id/message/${platform}/${obj.foreignIds[platform]}`),
+              messageNode.doc(),
+            ),
+          ],
+        );
+      });
+      await Promise.all(promises);
+    return uri;
   }
 }

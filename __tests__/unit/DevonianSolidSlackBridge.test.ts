@@ -15,7 +15,7 @@ class MockClient<Model> extends EventEmitter {
   }
   fakeIncoming(obj: Model): void {
     // console.log('fake incoming in mock client', obj);
-    this.emit('incoming', obj);
+    this.emit('add-from-client', obj);
   }
 }
 
@@ -42,7 +42,10 @@ describe('DevonianSolidSlackBridge', () => {
       text: 'solid text',
       user: undefined,
       metadata: {
-        devonian: { asdf: 'qwer', solid: 'https://example.com/chat/2025/05/05/chat.ttl#Msg1' }
+        entities: {
+          event_type: 'devonian',
+          event_payload: { asdf: 'qwer', solid: 'https://example.com/chat/2025/05/05/chat.ttl#Msg1' }
+        },
       },
     }]);
   });
@@ -54,7 +57,8 @@ describe('DevonianSolidSlackBridge', () => {
       user: 'slack user',
       text: 'slack text',
       metadata: {
-        devonian: {
+        event_type: 'devonian',
+        event_payload: {
           'asdf': 'qwer',
         },
       },

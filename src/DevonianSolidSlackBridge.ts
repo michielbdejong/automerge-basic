@@ -21,10 +21,11 @@ export class DevonianSolidSlackBridge {
           text: input.text,
           channel: this.index.convert('channel', 'solid', input.chatUri, 'slack'),
           metadata: {
-            devonian: this.index.convertForeignIds('solid', input.uri, input.foreignIds, 'slack'),
+            event_type: 'devonian',
+            event_payload: this.index.convertForeignIds('solid', input.uri, input.foreignIds, 'slack'),
           },
         };
-        // console.log('converting from Solid to Slack', input, ret);
+        console.log('converting from Solid to Slack', input, ret);
         return ret;
       },
       (input: SlackMessage): SolidMessage => {
@@ -34,9 +35,9 @@ export class DevonianSolidSlackBridge {
           text: input.text,
           authorWebId: this.index.convert('author', 'slack', input.user, 'solid'),
           date: new Date(parseFloat(input.ts) * 1000),
-          foreignIds: input.metadata?.devonian && this.index.convertForeignIds('slack', input.ts, input.metadata.devonian, 'solid'),
+          foreignIds: input.metadata?.event_payload && this.index.convertForeignIds('slack', input.ts, input.metadata.event_payload, 'solid'),
         };
-        // console.log('converting from Slack to Solid', input, ret);
+        console.log('converting from Slack to Solid', input, ret);
         return ret;
       },
     );

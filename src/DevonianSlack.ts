@@ -17,7 +17,8 @@ export type SlackMessage = {
   channel: string,
   text: string,
   metadata: {
-   devonian: ForeignIds,
+    event_type: string,
+    event_payload: ForeignIds,
   },
 };
 
@@ -60,7 +61,7 @@ export class SlackMessageClient extends DevonianClient<SlackMessage> {
     await this.app.start(9999);
   }
   storeIdentitiesFromSlack(input: SlackMessage): void {
-      this.index.storeIdentitiesFrom('message', 'slack', input.ts, input.metadata.devonian);
+      this.index.storeIdentitiesFrom('message', 'slack', input.ts, input.metadata.event_payload);
     // }
   }
 
