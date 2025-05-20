@@ -27,10 +27,10 @@ function solidSameasToForeignIds(sameAs: string[]): ForeignIds {
   const ret: { [platform: string]: string } = {};
   sameAs.forEach((uri: string) => {
     if (uri.startsWith(`https://tubsproject.org/id/message/`)) {
-      const rest = (uri.substring(`https://tubsproject.org/id/message/`.length));
+      const rest = uri.substring(`https://tubsproject.org/id/message/`.length);
       const parts = rest.split('/');
       if (parts.length === 2) {
-        ret[parts[0]] = parts[1]
+        ret[parts[0]] = parts[1];
       }
     }
   });
@@ -56,12 +56,12 @@ function getTodayDoc(chatUri: string): string {
 }
 
 export type SolidMessage = {
-  uri?: string,
-  chatUri: string,
-  text: string,
-  authorWebId: string,
-  date?: Date,
-  foreignIds: ForeignIds,
+  uri?: string;
+  chatUri: string;
+  text: string;
+  authorWebId: string;
+  date?: Date;
+  foreignIds: ForeignIds;
 };
 
 export class SolidMessageClient extends DevonianClient<SolidMessage> {
@@ -95,22 +95,26 @@ export class SolidMessageClient extends DevonianClient<SolidMessage> {
     const res = await this.fetch(streamingUrl, {
       dispatcher: new Agent({ bodyTimeout: 0 }),
     } as RequestInit);
-    for await (const _notificationText of res.body.pipeThrough(new TextDecoderStream()) as unknown as {
+    for await (const _notificationText of res.body.pipeThrough(
+      new TextDecoderStream(),
+    ) as unknown as {
       [Symbol.asyncIterator](): AsyncIterableIterator<string>;
     }) {
       void _notificationText;
       await this.fetcher.load(sym(todayDoc), { force: true });
       const chat = await this.module.readChat(process.env.CHANNEL_IN_SOLID);
       chat.latestMessages.map((entry) => {
-        this.emit('add-from-client', Object.assign(entry, {
-          chatUri: process.env.CHANNEL_IN_SOLID,
-          foreignIds: solidSameasToForeignIds(this.store.each(
-            sym(entry.uri),
-            owl('sameAs'),
-            null,
-            sym(entry.uri).doc(),
-          ).map((node) => node.value))
-        }));
+        this.emit(
+          'add-from-client',
+          Object.assign(entry, {
+            chatUri: process.env.CHANNEL_IN_SOLID,
+            foreignIds: solidSameasToForeignIds(
+              this.store
+                .each(sym(entry.uri), owl('sameAs'), null, sym(entry.uri).doc())
+                .map((node) => node.value),
+            ),
+          }),
+        );
       });
     }
   }
@@ -118,20 +122,22 @@ export class SolidMessageClient extends DevonianClient<SolidMessage> {
     const uri = await this.module.postMessage(obj);
     console.log('posted to Solid', obj, uri);
     const promises = Object.keys(obj.foreignIds).map(async (platform) => {
-        const messageNode = sym(uri);
-        await this.updater.updateMany(
-          [],
-          [
-            st(
-              messageNode,
-              owl('sameAs'),
-              sym(`https://tubsproject.org/id/message/${platform}/${obj.foreignIds[platform]}`),
-              messageNode.doc(),
+      const messageNode = sym(uri);
+      await this.updater.updateMany(
+        [],
+        [
+          st(
+            messageNode,
+            owl('sameAs'),
+            sym(
+              `https://tubsproject.org/id/message/${platform}/${obj.foreignIds[platform]}`,
             ),
-          ],
-        );
-      });
-      await Promise.all(promises);
+            messageNode.doc(),
+          ),
+        ],
+      );
+    });
+    await Promise.all(promises);
     return uri;
   }
 }
