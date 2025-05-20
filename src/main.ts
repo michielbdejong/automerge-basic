@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { DevonianIndex } from 'devonian';
-import { SolidMessageClient } from './DevonianSolid.js';
-import { SlackMessageClient } from './DevonianSlack.js';
+import { SolidMessageClient } from './SolidMessageClient.js';
+import { SlackMessageClient } from './SlackMessageClient.js';
 import { DevonianSolidSlackBridge } from './DevonianSolidSlackBridge.js';
 
 // ...

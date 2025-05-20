@@ -1,6 +1,6 @@
 import { DevonianClient, DevonianTable, DevonianLens, DevonianIndex } from 'devonian';
-import { SolidMessage } from './DevonianSolid.js';
-import { SlackMessage } from './DevonianSlack.js';
+import { SolidMessage } from './SolidMessageClient.js';
+import { SlackMessage } from './SlackMessageClient.js';
 
 export class DevonianSolidSlackBridge {
   index: DevonianIndex

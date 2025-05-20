@@ -1,8 +1,8 @@
 import { EventEmitter } from 'node:events';
 import { describe, it, expect } from 'vitest';
 import { DevonianIndex } from 'devonian';
-import { SolidMessage } from '../../src/DevonianSolid.js';
-import { SlackMessage } from '../../src/DevonianSlack.js';
+import { SolidMessage } from '../../src/SolidMessageClient.js';
+import { SlackMessage } from '../../src/SlackMessageClient.js';
 import { DevonianSolidSlackBridge } from '../../src/DevonianSolidSlackBridge.js';
 
 class MockClient<Model> extends EventEmitter {
