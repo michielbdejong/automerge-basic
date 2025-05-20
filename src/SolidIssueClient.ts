@@ -1,6 +1,28 @@
-import 'dotenv/config';
-import { getFetcher } from './fetcher.js';
-import { fetchTracker, addIssue, addComment } from './tasks.js';
+import { ForeignIds, DevonianClient } from 'devonian';
+import { getFetcher } from './solid/fetcher.js';
+import { fetchTracker, addIssue, addComment } from './solid/tasks.js';
+import { SolidClient } from './SolidClient.js';
+
+export type SolidIssue = {
+  uri: string | undefined;
+  title: string;
+  description: string;
+  foreignIds: ForeignIds;
+}
+
+export class SolidIssueClient extends DevonianClient<SolidIssue> {
+  solidClient: SolidClient;
+  constructor(solidClient: SolidClient) {
+    super();
+    this.solidClient = solidClient;
+  }
+  async connect(): Promise<void> {
+    await this.solidClient.ensureConnected();
+  }
+  async add(obj: SolidIssue): Promise<string> {
+    return obj.uri;
+  }
+}
 
 async function test(): Promise<void> {
   const fetcher = await getFetcher();

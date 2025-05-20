@@ -1,0 +1,73 @@
+import { ForeignIds } from 'devonian';
+import {
+  Fetcher,
+  graph,
+  UpdateManager,
+  AutoInitOptions,
+  IndexedFormula,
+  sym,
+  st,
+  Namespace,
+} from 'rdflib';
+import { getFetcher } from './solid/fetcher.js';
+const owl = Namespace('http://www.w3.org/2002/07/owl#');
+
+export class SolidClient {
+  // private index: DevonianIndex;
+  fetch: typeof globalThis.fetch;
+  store: IndexedFormula;
+  fetcher: Fetcher;
+  updater: UpdateManager;
+  connecting: Promise<void> | undefined;
+  private async connect(): Promise<void> {
+    console.log(`Connecting to Solid...`);
+    this.fetch = await getFetcher();
+    this.store = graph();
+    this.updater = new UpdateManager(this.store);
+    this.fetcher = new Fetcher(this.store, {
+      fetch: this.fetch,
+    } as AutoInitOptions);
+  }
+  async ensureConnected() {
+    if (!this.connecting) {
+      this.connecting = this.connect();
+    }
+    return this.connecting;
+  }
+  async storeForeignIds(uri: string, foreignIds: ForeignIds): Promise<void> {
+    const promises = Object.keys(foreignIds).map(async (platform) => {
+      const messageNode = sym(uri);
+      await this.updater.updateMany(
+        [],
+        [
+          st(
+            messageNode,
+            owl('sameAs'),
+            sym(
+              `https://tubsproject.org/id/message/${platform}/${foreignIds[platform]}`,
+            ),
+            messageNode.doc(),
+          ),
+        ],
+      );
+    });
+    await Promise.all(promises);
+  }
+  getForeignIds(uri: string): ForeignIds {    
+    const sameAs = this.store
+      .each(sym(uri), owl('sameAs'), null, sym(uri).doc())
+      .map((node) => node.value);
+    const ret: ForeignIds = {};
+    sameAs.forEach((uri: string) => {
+      if (uri.startsWith(`https://tubsproject.org/id/message/`)) {
+        const rest = uri.substring(`https://tubsproject.org/id/message/`.length);
+        const parts = rest.split('/');
+        if (parts.length === 2) {
+          ret[parts[0]] = parts[1];
+        }
+      }
+    });
+    console.log('converted sameAs uris', sameAs, ret);
+    return ret;
+  }
+}
