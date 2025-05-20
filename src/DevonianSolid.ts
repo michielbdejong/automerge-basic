@@ -1,5 +1,25 @@
-import { DevonianClient, DevonianIndex, ForeignIds } from 'devonian';
-
+// import { DevonianClient, DevonianIndex, ForeignIds } from 'devonian';
+import { DevonianClient, ForeignIds } from 'devonian';
+// import { Agent } from 'undici';
+import {
+  Fetcher,
+  graph,
+  UpdateManager,
+  AutoInitOptions,
+  IndexedFormula,
+  // sym,
+  // Namespace,
+  // isNamedNode,
+  // st,
+} from 'rdflib';
+// import { executeUpdate } from "@solid-data-modules/rdflib-utils";
+import ChatsModuleRdfLib, {
+  ChatsModule,
+} from '@solid-data-modules/chats-rdflib';
+// import { Tub, SolidChatMessage } from './tub.js';
+// import { ChannelDrop, AuthorDrop } from './drops.js';
+// import { fetchTracker } from './solid/tasks.js';
+import { getFetcher } from './solid/fetcher.js';
 
 export function solidSameasToForeignIds(sameAs: string[]): ForeignIds {
   const ret: { [platform: string]: string } = {};
@@ -32,17 +52,51 @@ export type SolidMessage = {
 };
 
 export class SolidMessageClient extends DevonianClient<SolidMessage> {
-  private index: DevonianIndex;
-  constructor(index: DevonianIndex) {
+  // private index: DevonianIndex;
+  fetch: typeof globalThis.fetch;
+  store: IndexedFormula;
+  fetcher: Fetcher;
+  updater: UpdateManager;
+  module: ChatsModule;
+  // constructor(index: DevonianIndex) {
+  constructor() {
     super();
-    this.index = index;
+    // this.index = index;
   }
   async connect(): Promise<void> {
-
+    console.log(`Connecting to Solid...`);
+    this.fetch = await getFetcher();
+    this.store = graph();
+    this.updater = new UpdateManager(this.store);
+    this.fetcher = new Fetcher(this.store, {
+      fetch: this.fetch,
+    } as AutoInitOptions);
+    this.module = new ChatsModuleRdfLib({
+      store: this.store,
+      fetcher: this.fetcher,
+      updater: this.updater,
+    });
   }
-
+  async fetchChat(): Promise<void> {
+    const {
+      latestMessages,
+    }: {
+      uri: string;
+      name: string;
+      latestMessages: {
+        uri: string;
+        text: string;
+        date: Date;
+        authorWebId: string;
+      }[];
+    } = await this.module.readChat(process.env.CHANNEL_IN_SOLID);
+    latestMessages.map((entry) => {
+      this.emit('add-from-client', entry);
+    });
+  }
   async add(obj: SolidMessage): Promise<string> {
-    console.log('make an API call', obj, typeof this.index);
-    return 'uri';
+    const ret = await this.module.postMessage(obj);
+    console.log('posted to Solid', obj, ret);
+    return ret;
   }
 }
