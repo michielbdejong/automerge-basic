@@ -1,4 +1,3 @@
-// import { DevonianClient, DevonianIndex, ForeignIds } from 'devonian';
 import { DevonianClient, ForeignIds } from 'devonian';
 import { Agent } from 'undici';
 import {

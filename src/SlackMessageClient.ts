@@ -1,4 +1,4 @@
-import { DevonianClient, DevonianIndex, ForeignIds } from 'devonian';
+import { DevonianClient, ForeignIds } from 'devonian';
 const bolt = await import('@slack/bolt');
 const App = bolt.default.App;
 
