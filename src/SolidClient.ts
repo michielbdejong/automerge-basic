@@ -10,12 +10,17 @@ import {
   Namespace,
 } from 'rdflib';
 import { getFetcher } from './solid/fetcher.js';
+
+import ChatsModuleRdfLib, {
+  ChatsModule,
+} from '@solid-data-modules/chats-rdflib';
 const owl = Namespace('http://www.w3.org/2002/07/owl#');
 
 export class SolidClient {
   // private index: DevonianIndex;
   fetch: typeof globalThis.fetch;
   store: IndexedFormula;
+  chatsModule: ChatsModule;
   fetcher: Fetcher;
   updater: UpdateManager;
   connecting: Promise<void> | undefined;
@@ -27,6 +32,11 @@ export class SolidClient {
     this.fetcher = new Fetcher(this.store, {
       fetch: this.fetch,
     } as AutoInitOptions);
+    this.chatsModule = new ChatsModuleRdfLib({
+      store: this.store,
+      fetcher: this.fetcher,
+      updater: this.updater,
+    });    
   }
   async ensureConnected(): Promise<void> {
     if (!this.connecting) {

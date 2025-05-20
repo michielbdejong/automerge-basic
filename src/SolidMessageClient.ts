@@ -1,12 +1,7 @@
 import { DevonianClient, ForeignIds } from 'devonian';
 import { SolidClient } from './SolidClient.js';
-import ChatsModuleRdfLib, {
-  ChatsModule,
-} from '@solid-data-modules/chats-rdflib';
 import { Agent } from 'undici';
-import {
-  sym,
-} from 'rdflib';
+import { sym } from 'rdflib';
 
 function getTodayDoc(chatUri: string): string {
   // FIXME: expose this code from https://github.com/solid-contrib/data-modules/blob/main/chats/rdflib/src/module/uris/mintMessageUri.ts
@@ -36,15 +31,10 @@ export type SolidMessage = {
 
 export class SolidMessageClient extends DevonianClient<SolidMessage> {
   solidClient: SolidClient;
-  module: ChatsModule;
   constructor(solidClient: SolidClient) {
     super();
     this.solidClient = solidClient;
-    this.module = new ChatsModuleRdfLib({
-      store: this.solidClient.store,
-      fetcher: this.solidClient.fetcher,
-      updater: this.solidClient.updater,
-    });
+    
   }
   async connect(): Promise<void> {
     await this.solidClient.ensureConnected();
@@ -62,7 +52,8 @@ export class SolidMessageClient extends DevonianClient<SolidMessage> {
     }) {
       void _notificationText;
       await this.solidClient.fetcher.load(sym(todayDoc), { force: true });
-      const chat = await this.module.readChat(process.env.CHANNEL_IN_SOLID);
+      const chat = await this.solidClient.chatsModule.readChat(process.env.CHANNEL_IN_SOLID);
+      void chat
       chat.latestMessages.map((entry) => {
         this.emit(
           'add-from-client',
@@ -75,9 +66,11 @@ export class SolidMessageClient extends DevonianClient<SolidMessage> {
     }
   }
   async add(obj: SolidMessage): Promise<string> {
-    const uri = await this.module.postMessage(obj);
-    console.log('posted to Solid', obj, uri);
-    this.solidClient.storeForeignIds(uri, obj.foreignIds);
-    return uri;
+    void obj
+    return 'fake';
+    // const uri = await this.module.postMessage(obj);
+    // console.log('posted to Solid', obj, uri);
+    // this.solidClient.storeForeignIds(uri, obj.foreignIds);
+    // return uri;
   }
 }
