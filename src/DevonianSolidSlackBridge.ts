@@ -32,7 +32,7 @@ export class DevonianSolidSlackBridge {
           uri: this.index.convert('message', 'slack', input.ts, 'solid'),
           chatUri: this.index.convert('channel', 'slack', input.channel, 'solid'),
           text: input.text,
-          authorWebId: this.index.convert('person', 'slack', input.user, 'solid'),
+          authorWebId: this.index.convert('author', 'slack', input.user, 'solid'),
           date: new Date(parseFloat(input.ts) * 1000),
           foreignIds: input.metadata?.devonian && this.index.convertForeignIds('slack', input.ts, input.metadata.devonian, 'solid'),
         };
