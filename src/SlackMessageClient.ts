@@ -1,21 +1,20 @@
-import { DevonianClient, ForeignIds } from 'devonian';
+import { DevonianClient, DevonianModel } from 'devonian';
 const bolt = await import('@slack/bolt');
 const App = bolt.default.App;
 
 const BOLT_PORT = 7000;
 
-export type SlackMessage = {
-  ts?: string;
+export type SlackMessageWithoutId = DevonianModel & {
   user?: string;
   channel: string;
   text: string;
-  metadata: {
-    event_type: string;
-    event_payload: ForeignIds;
-  };
 };
 
-export class SlackMessageClient extends DevonianClient<SlackMessage> {
+export type SlackMessage = SlackMessageWithoutId & {
+  ts: string;
+};
+
+export class SlackMessageClient extends DevonianClient<SlackMessageWithoutId, SlackMessage> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private app: any;
 
@@ -34,15 +33,18 @@ export class SlackMessageClient extends DevonianClient<SlackMessage> {
     await this.app.start(9999);
   }
 
-  async add(obj: SlackMessage): Promise<string> {
+  async add(obj: SlackMessageWithoutId): Promise<SlackMessage> {
     const created = await this.app.client.chat.postMessage({
       text: obj.text,
       channel: obj.channel,
-      metadata: obj.metadata,
+      metadata: {
+        event_type: 'devonian',
+        event_payload: obj.foreignIds,
+      }
     });
     if (!created.ok) {
       throw new Error('Could not post message to Slack');
     }
-    return created.ts;
+    return Object.assign(obj, { ts: created.ts });
   }
 }

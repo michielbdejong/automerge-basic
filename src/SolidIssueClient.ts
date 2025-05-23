@@ -1,16 +1,18 @@
-import { ForeignIds, DevonianClient } from 'devonian';
+import { DevonianClient, DevonianModel } from 'devonian';
 // import { getFetcher } from './solid/fetcher.js';
 // import { fetchTracker, addIssue, addComment } from './solid/tasks.js';
 import { SolidClient } from './SolidClient.js';
 
-export type SolidIssue = {
-  uri: string | undefined;
+export type SolidIssueWithoutId = DevonianModel & {
   title: string;
   description: string;
-  foreignIds: ForeignIds;
 }
 
-export class SolidIssueClient extends DevonianClient<SolidIssue> {
+export type SolidIssue = SolidIssueWithoutId & {
+  uri: string;
+}
+
+export class SolidIssueClient extends DevonianClient<SolidIssueWithoutId, SolidIssue> {
   solidClient: SolidClient;
   constructor(solidClient: SolidClient) {
     super();
@@ -19,8 +21,9 @@ export class SolidIssueClient extends DevonianClient<SolidIssue> {
   async connect(): Promise<void> {
     await this.solidClient.ensureConnected();
   }
-  async add(obj: SolidIssue): Promise<string> {
-    return obj.uri;
+  async add(obj: SolidIssueWithoutId): Promise<SolidIssue> {
+    const uri = 'fake';
+    return Object.assign(obj, { uri });
   }
 }
 

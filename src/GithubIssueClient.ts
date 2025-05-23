@@ -1,4 +1,4 @@
-import { DevonianClient, ForeignIds } from 'devonian';
+import { DevonianClient, DevonianModel } from 'devonian';
 
 const DEFAULT_HTTP_HEADERS = {
   Accept: 'application/vnd.github+json',
@@ -10,13 +10,14 @@ const BASE_API_URL = `https://api.github.com/repos`;
 const REL_API_PATH_ISSUES = `issues`;
 // const REL_API_PATH_COMMENTS = `comments`;
 
-export type GithubIssue = {
-  foreignIds: ForeignIds;
-  number: number | undefined;
+export type GithubIssueWithoutId = DevonianModel & {
   title: string;
   body: string;
 };
 
+export type GithubIssue = GithubIssueWithoutId & {
+  number: number;
+};
 export type GithubComment = {
   id: number;
   body: string;
@@ -33,7 +34,7 @@ export type GitHubWebhookObject = {
   };
 };
 
-export class GithubIssueClient extends DevonianClient<GithubIssue> {
+export class GithubIssueClient extends DevonianClient<GithubIssueWithoutId, GithubIssue> {
   async connect(): Promise<void> {
     //   parseWebhookData(data: GitHubWebhookObject): {
     //   type: WebhookEventType;
@@ -94,7 +95,7 @@ export class GithubIssueClient extends DevonianClient<GithubIssue> {
     // }
   }
 
-  async add(obj: GithubIssue): Promise<string> {
+  async add(obj: GithubIssueWithoutId): Promise<GithubIssue> {
     const headers = DEFAULT_HTTP_HEADERS;
     headers['Authorization'] = `Bearer ${process.env.GITHUB_BEARER_TOKEN}`;
     const fetchResult = await fetch(
@@ -114,6 +115,6 @@ export class GithubIssueClient extends DevonianClient<GithubIssue> {
     );
     console.log(await fetchResult.json());
     // return fetchResult.json();
-    return 'created';
+    return Object.assign(obj, { number: 42 });
   }
 }

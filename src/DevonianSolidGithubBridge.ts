@@ -4,27 +4,34 @@ import {
   DevonianLens,
   DevonianIndex,
 } from 'devonian';
-import { SolidIssue } from './SolidIssueClient.js';
-import { GithubIssue } from './GithubIssueClient.js';
+import { SolidIssueWithoutId, SolidIssue } from './SolidIssueClient.js';
+import { GithubIssueWithoutId, GithubIssue } from './GithubIssueClient.js';
 
 export class DevonianSolidGithubBridge {
   index: DevonianIndex;
-  solidIssueTable: DevonianTable<SolidIssue>;
-  githubIssueTable: DevonianTable<GithubIssue>;
+  solidIssueTable: DevonianTable<SolidIssueWithoutId, SolidIssue>;
+  githubIssueTable: DevonianTable<GithubIssueWithoutId, GithubIssue>;
 
   constructor(
     index: DevonianIndex,
-    SolidIssueClient: DevonianClient<SolidIssue>,
-    GithubIssueClient: DevonianClient<GithubIssue>,
+    SolidIssueClient: DevonianClient<SolidIssueWithoutId, SolidIssue>,
+    GithubIssueClient: DevonianClient<GithubIssueWithoutId, GithubIssue>,
+    replicaId: string,
   ) {
     this.index = index;
-    this.solidIssueTable = new DevonianTable<SolidIssue>(
-      SolidIssueClient,
-    );
-    this.githubIssueTable = new DevonianTable<GithubIssue>(
-      GithubIssueClient,
-    );
-    new DevonianLens<SolidIssue, GithubIssue>(
+    this.solidIssueTable = new DevonianTable<SolidIssueWithoutId, SolidIssue>({
+      client: SolidIssueClient,
+      idFieldName: 'uri',
+      platform: 'solid',
+      replicaId
+    });
+    this.githubIssueTable = new DevonianTable<GithubIssueWithoutId, GithubIssue>({
+      client: GithubIssueClient,
+      idFieldName: 'uri',
+      platform: 'solid',
+      replicaId
+    });
+    new DevonianLens<SolidIssueWithoutId, GithubIssueWithoutId, SolidIssue, GithubIssue>(
       this.solidIssueTable,
       this.githubIssueTable,
   // Solid Issue fields:
@@ -37,14 +44,14 @@ export class DevonianSolidGithubBridge {
   //   commentUris: string[];
 
   // Github Issue fields:
-  //   foreignIds: ForeignIds;
+  //   foreignIds: IdentifierMap;
   //   number: number | undefined;
   //   title: string;
   //   body: string;
   
-      (input: SolidIssue): GithubIssue => {
+      async (input: SolidIssue): Promise<GithubIssue> => {
         const ret = {
-          number: parseInt(this.index.convert('issue', 'solid', input.uri, 'github')),
+          number: this.index.convertId('issue', 'solid', input.uri, 'github') as number,
           title: input.title,
           body: input.description,
           foreignIds: input.foreignIds,
@@ -52,9 +59,9 @@ export class DevonianSolidGithubBridge {
         console.log('converting from Solid to Slack', input, ret);
         return ret;
       },
-      (input: GithubIssue): SolidIssue => {
+      async (input: GithubIssue): Promise<SolidIssue> => {
         const ret = {
-          uri: this.index.convert('issue', 'github', input.number.toString(), 'solid'),
+          uri: this.index.convertId('issue', 'github', input.number.toString(), 'solid') as string,
           title: input.title,
           description: input.body,
           foreignIds:input.foreignIds,

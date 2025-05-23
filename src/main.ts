@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import 'dotenv/config';
 import { DevonianIndex } from 'devonian';
 import { SolidClient } from './SolidClient.js';
@@ -32,5 +33,5 @@ const clients = {
  githubIssue: new GithubIssueClient(),
 };
 new DevonianSolidSlackBridge(index, clients.solidMessage, clients.slackMessage);
-new DevonianSolidGithubBridge(index, clients.solidIssue, clients.githubIssue);
+new DevonianSolidGithubBridge(index, clients.solidIssue, clients.githubIssue, randomBytes(8).toString('hex'));
 await Promise.all(Object.keys(clients).map(name => clients[name].connect()));

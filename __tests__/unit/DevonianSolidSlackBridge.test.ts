@@ -1,28 +1,15 @@
-import { EventEmitter } from 'node:events';
 import { describe, it, expect } from 'vitest';
 import { DevonianIndex } from 'devonian';
-import { SolidMessage } from '../../src/SolidMessageClient.js';
-import { SlackMessage } from '../../src/SlackMessageClient.js';
+import { DevonianMockClient } from '../DevonianMockClient.js';
+import { SolidMessageWithoutId, SolidMessage } from '../../src/SolidMessageClient.js';
+import { SlackMessageWithoutId, SlackMessage } from '../../src/SlackMessageClient.js';
 import { DevonianSolidSlackBridge } from '../../src/DevonianSolidSlackBridge.js';
 
-class MockClient<Model> extends EventEmitter {
-  added: Model[] = [];
-  counter: number = 0;
-  async add(obj: Model): Promise<string> {
-    // console.log('adding in mock client', obj);
-    this.added.push(obj);
-    return (this.counter++).toString();
-  }
-  fakeIncoming(obj: Model): void {
-    // console.log('fake incoming in mock client', obj);
-    this.emit('add-from-client', obj);
-  }
-}
 
 describe('DevonianSolidSlackBridge', () => {
   const index = new DevonianIndex();
-  const solidMockClient = new MockClient<SolidMessage>;
-  const slackMockClient = new MockClient<SlackMessage>;
+  const solidMockClient = new DevonianMockClient<SolidMessageWithoutId, SolidMessage>('solid', 'uri');
+  const slackMockClient = new DevonianMockClient<SlackMessageWithoutId, SlackMessage>('slack', 'ts');
   new DevonianSolidSlackBridge(index, solidMockClient, slackMockClient);
   // console.log('Solid is left, Slack is right');
   it('can go from Solid to Slack', async () => {
@@ -54,11 +41,8 @@ describe('DevonianSolidSlackBridge', () => {
       channel: 'slack channel',
       user: 'slack user',
       text: 'slack text',
-      metadata: {
-        event_type: 'devonian',
-        event_payload: {
-          'asdf': 'qwer',
-        },
+      foreignIds: {
+        'asdf': 'qwer',
       },
     });
     await new Promise(resolve => setTimeout(resolve, 0));

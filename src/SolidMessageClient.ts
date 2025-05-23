@@ -1,4 +1,4 @@
-import { DevonianClient, ForeignIds } from 'devonian';
+import { DevonianClient, IdentifierMap, DevonianModel } from 'devonian';
 import { SolidClient } from './SolidClient.js';
 import { Agent } from 'undici';
 import { sym } from 'rdflib';
@@ -20,16 +20,19 @@ function getTodayDoc(chatUri: string): string {
   return containerUri + dateFolders + '/chat.ttl';
 }
 
-export type SolidMessage = {
-  uri?: string;
+export type SolidMessageWithoutId = DevonianModel & {
   chatUri: string;
   text: string;
   authorWebId: string;
   date?: Date;
-  foreignIds: ForeignIds;
+  foreignIds: IdentifierMap;
 };
 
-export class SolidMessageClient extends DevonianClient<SolidMessage> {
+export type SolidMessage = SolidMessageWithoutId & {
+  uri: string;
+};
+
+export class SolidMessageClient extends DevonianClient<SolidMessageWithoutId, SolidMessage> {
   solidClient: SolidClient;
   constructor(solidClient: SolidClient) {
     super();
@@ -59,18 +62,16 @@ export class SolidMessageClient extends DevonianClient<SolidMessage> {
           'add-from-client',
           Object.assign(entry, {
             chatUri: process.env.CHANNEL_IN_SOLID,
-            foreignIds: this.solidClient.getForeignIds(entry.uri),
+            foreignIds: this.solidClient.getIdentifierMap(entry.uri),
           }),
         );
       });
     }
   }
-  async add(obj: SolidMessage): Promise<string> {
-    void obj
-    return 'fake';
-    // const uri = await this.module.postMessage(obj);
-    // console.log('posted to Solid', obj, uri);
-    // this.solidClient.storeForeignIds(uri, obj.foreignIds);
-    // return uri;
+  async add(obj: SolidMessageWithoutId): Promise<SolidMessage> {
+    const uri = await this.solidClient.chatsModule.postMessage(obj);
+    console.log('posted to Solid', obj, uri);
+    this.solidClient.storeIdentifierMap(uri, obj.foreignIds);
+    return Object.assign(obj, { uri });
   }
 }

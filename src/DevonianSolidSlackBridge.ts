@@ -1,88 +1,40 @@
-import {
-  DevonianClient,
-  DevonianTable,
-  DevonianLens,
-  DevonianIndex,
-} from 'devonian';
-import { SolidMessage } from './SolidMessageClient.js';
-import { SlackMessage } from './SlackMessageClient.js';
+import { DevonianClient, DevonianTable, DevonianLens, DevonianIndex } from 'devonian';
+import { SolidMessageWithoutId, SolidMessage } from './SolidMessageClient.js';
+import { SlackMessageWithoutId, SlackMessage } from './SlackMessageClient.js';
 
 export class DevonianSolidSlackBridge {
-  index: DevonianIndex;
-  solidMessageTable: DevonianTable<SolidMessage>;
-  slackMessageTable: DevonianTable<SlackMessage>;
+  index: DevonianIndex
+  solidMessageTable: DevonianTable<SolidMessageWithoutId, SolidMessage>;
+  slackMessageTable: DevonianTable<SlackMessageWithoutId, SlackMessage>;
 
-  constructor(
-    index: DevonianIndex,
-    solidMessageClient: DevonianClient<SolidMessage>,
-    slackMessageClient: DevonianClient<SlackMessage>,
-  ) {
+  constructor(index: DevonianIndex, solidMessageClient: DevonianClient<SolidMessageWithoutId, SolidMessage>, slackMessageClient: DevonianClient<SlackMessageWithoutId, SlackMessage>) {
     this.index = index;
-    this.solidMessageTable = new DevonianTable<SolidMessage>(
-      solidMessageClient,
-    );
-    this.slackMessageTable = new DevonianTable<SlackMessage>(
-      slackMessageClient,
-    );
-    new DevonianLens<SolidMessage, SlackMessage>(
+    this.solidMessageTable = new DevonianTable<SolidMessageWithoutId, SolidMessage>({ client: solidMessageClient, idFieldName: 'uri', platform: 'solid', replicaId: 'test-replica' });
+    this.slackMessageTable = new DevonianTable<SlackMessageWithoutId, SlackMessage>({ client: slackMessageClient, idFieldName: 'ts', platform: 'slack', replicaId: 'test-replica' });
+    new DevonianLens<SolidMessageWithoutId, SlackMessageWithoutId, SolidMessage, SlackMessage>(
       this.solidMessageTable,
       this.slackMessageTable,
-      (input: SolidMessage): SlackMessage => {
+      async (input: SolidMessage): Promise<SlackMessage> => {
         const ret = {
-          ts: this.index.convert('message', 'solid', input.uri, 'slack'),
-          user: this.index.convert(
-            'person',
-            'solid',
-            input.authorWebId,
-            'slack',
-          ),
+          ts: this.index.convertId('message', 'solid', input.uri, 'slack') as string,
+          user: this.index.convertId('person', 'solid', input.authorWebId, 'slack') as string,
           text: input.text,
-          channel: this.index.convert(
-            'channel',
-            'solid',
-            input.chatUri,
-            'slack',
-          ),
-          metadata: {
-            event_type: 'devonian',
-            event_payload: this.index.convertForeignIds(
-              'solid',
-              input.uri,
-              input.foreignIds,
-              'slack',
-            ),
-          },
+          channel: this.index.convertId('channel', 'solid', input.chatUri, 'slack') as string,
+          foreignIds: this.index.convertForeignIds('solid', input.uri, input.foreignIds, 'slack'),
         };
-        console.log('converting from Solid to Slack', input, ret);
+        // console.log('converting from Solid to Slack', input, ret);
         return ret;
       },
-      (input: SlackMessage): SolidMessage => {
+      async (input: SlackMessage): Promise<SolidMessage> => {
         const ret = {
-          uri: this.index.convert('message', 'slack', input.ts, 'solid'),
-          chatUri: this.index.convert(
-            'channel',
-            'slack',
-            input.channel,
-            'solid',
-          ),
+          uri: this.index.convertId('message', 'slack', input.ts, 'solid') as string,
+          chatUri: this.index.convertId('channel', 'slack', input.channel, 'solid') as string,
           text: input.text,
-          authorWebId: this.index.convert(
-            'author',
-            'slack',
-            input.user,
-            'solid',
-          ),
+          authorWebId: this.index.convertId('person', 'slack', input.user, 'solid') as string,
           date: new Date(parseFloat(input.ts) * 1000),
-          foreignIds:
-            input.metadata?.event_payload &&
-            this.index.convertForeignIds(
-              'slack',
-              input.ts,
-              input.metadata.event_payload,
-              'solid',
-            ),
+          foreignIds: this.index.convertForeignIds('slack', input.ts, input.foreignIds, 'solid'),
         };
-        console.log('converting from Slack to Solid', input, ret);
+        // console.log('converting from Slack to Solid', input, ret);
         return ret;
       },
     );

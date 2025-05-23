@@ -1,4 +1,4 @@
-import { ForeignIds } from 'devonian';
+import { IdentifierMap } from 'devonian';
 import {
   Fetcher,
   graph,
@@ -44,7 +44,7 @@ export class SolidClient {
     }
     return this.connecting;
   }
-  async storeForeignIds(uri: string, foreignIds: ForeignIds): Promise<void> {
+  async storeIdentifierMap(uri: string, foreignIds: IdentifierMap): Promise<void> {
     const promises = Object.keys(foreignIds).map(async (platform) => {
       const messageNode = sym(uri);
       await this.updater.updateMany(
@@ -63,11 +63,11 @@ export class SolidClient {
     });
     await Promise.all(promises);
   }
-  getForeignIds(uri: string): ForeignIds {    
+  getIdentifierMap(uri: string): IdentifierMap {    
     const sameAs = this.store
       .each(sym(uri), owl('sameAs'), null, sym(uri).doc())
       .map((node) => node.value);
-    const ret: ForeignIds = {};
+    const ret: IdentifierMap = {};
     sameAs.forEach((uri: string) => {
       if (uri.startsWith(`https://tubsproject.org/id/message/`)) {
         const rest = uri.substring(`https://tubsproject.org/id/message/`.length);
