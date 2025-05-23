@@ -1,6 +1,6 @@
 import { DevonianClient, DevonianModel } from 'devonian';
 // import { getFetcher } from './solid/fetcher.js';
-// import { fetchTracker, addIssue, addComment } from './solid/tasks.js';
+import { fetchTracker, Interpretation, addIssue } from 'solid-data-module-tasks';
 import { SolidClient } from './SolidClient.js';
 
 export type SolidIssueWithoutId = DevonianModel & {
@@ -14,15 +14,24 @@ export type SolidIssue = SolidIssueWithoutId & {
 
 export class SolidIssueClient extends DevonianClient<SolidIssueWithoutId, SolidIssue> {
   solidClient: SolidClient;
+  localState: Interpretation;
   constructor(solidClient: SolidClient) {
     super();
     this.solidClient = solidClient;
   }
   async connect(): Promise<void> {
     await this.solidClient.ensureConnected();
+    this.localState = await fetchTracker(process.env.TRACKER_IN_SOLID, this.solidClient.fetch);
+    console.log(this.localState);
+    this.solidClient.subscribe(process.env.TRACKER_IN_SOLID, (notificationText: string) => {
+      console.log('Tracker index changed', notificationText);
+    });
+    this.solidClient.subscribe(this.localState.tracker.stateUri, (notificationText: string) => {
+      console.log('Tracker state doc changed', notificationText);
+    });
   }
   async add(obj: SolidIssueWithoutId): Promise<SolidIssue> {
-    const uri = 'fake';
+    const uri = await addIssue(this.localState, obj, this.solidClient.fetch);
     return Object.assign(obj, { uri });
   }
 }

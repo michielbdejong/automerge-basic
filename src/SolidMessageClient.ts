@@ -1,6 +1,5 @@
 import { DevonianClient, IdentifierMap, DevonianModel } from 'devonian';
 import { SolidClient } from './SolidClient.js';
-import { Agent } from 'undici';
 import { sym } from 'rdflib';
 
 function getTodayDoc(chatUri: string): string {
@@ -43,17 +42,7 @@ export class SolidMessageClient extends DevonianClient<SolidMessageWithoutId, So
     await this.solidClient.ensureConnected();
     const todayDoc = getTodayDoc(process.env.CHANNEL_IN_SOLID);
     console.log('fetching todayDoc', todayDoc);
-    // FIXME: discover this URL from the response header link:
-    const streamingUrl = `https://solidcommunity.net/.notifications/StreamingHTTPChannel2023/${encodeURIComponent(todayDoc)}`;
-    const res = await this.solidClient.fetch(streamingUrl, {
-      dispatcher: new Agent({ bodyTimeout: 0 }),
-    } as RequestInit);
-    for await (const _notificationText of res.body.pipeThrough(
-      new TextDecoderStream(),
-    ) as unknown as {
-      [Symbol.asyncIterator](): AsyncIterableIterator<string>;
-    }) {
-      void _notificationText;
+    this.solidClient.subscribe(todayDoc, async () => {
       await this.solidClient.fetcher.load(sym(todayDoc), { force: true });
       const chat = await this.solidClient.chatsModule.readChat(process.env.CHANNEL_IN_SOLID);
       void chat
@@ -66,7 +55,7 @@ export class SolidMessageClient extends DevonianClient<SolidMessageWithoutId, So
           }),
         );
       });
-    }
+    });
   }
   async add(obj: SolidMessageWithoutId): Promise<SolidMessage> {
     const uri = await this.solidClient.chatsModule.postMessage(obj);

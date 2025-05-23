@@ -1,3 +1,4 @@
+import { Agent } from 'undici';
 import { IdentifierMap } from 'devonian';
 import {
   Fetcher,
@@ -9,12 +10,27 @@ import {
   st,
   Namespace,
 } from 'rdflib';
-import { getFetcher } from './solid/fetcher.js';
-
+import { v7 } from 'css-authn';
 import ChatsModuleRdfLib, {
   ChatsModule,
 } from '@solid-data-modules/chats-rdflib';
 const owl = Namespace('http://www.w3.org/2002/07/owl#');
+
+async function getFetcher() {
+  // console.log('obtaining authenticated fetcher', process.env);
+  const authenticatedFetch = await v7.getAuthenticatedFetch({
+    email: process.env.SOLID_EMAIL,
+    password: process.env.SOLID_PASSWORD,
+    provider: process.env.SOLID_SERVER,
+  });
+  // console.log('obtained authenticated fetcher');
+  return (
+    ...args: Parameters<typeof authenticatedFetch>
+  ): Promise<Response> => {
+    console.log('fetching', args[0]);
+    return authenticatedFetch.apply(this, args);
+  };
+}
 
 export class SolidClient {
   // private index: DevonianIndex;
@@ -79,5 +95,18 @@ export class SolidClient {
     });
     console.log('converted sameAs uris', sameAs, ret);
     return ret;
+  }
+  async subscribe(url: string, callback: (notificationText: string) => void): Promise<void> {
+    const streamingUrl = `https://solidcommunity.net/.notifications/StreamingHTTPChannel2023/${encodeURIComponent(url)}`;
+    const res = await this.fetch(streamingUrl, {
+      dispatcher: new Agent({ bodyTimeout: 0 }),
+    } as RequestInit);
+    for await (const notificationText of res.body.pipeThrough(
+      new TextDecoderStream(),
+    ) as unknown as {
+      [Symbol.asyncIterator](): AsyncIterableIterator<string>;
+    }) {
+      callback(notificationText);
+    }
   }
 }

@@ -2,11 +2,11 @@ import { randomBytes } from 'node:crypto';
 import 'dotenv/config';
 import { DevonianIndex } from 'devonian';
 import { SolidClient } from './SolidClient.js';
-import { SolidMessageClient } from './SolidMessageClient.js';
+// import { SolidMessageClient } from './SolidMessageClient.js';
 import { SolidIssueClient } from './SolidIssueClient.js';
-import { SlackMessageClient } from './SlackMessageClient.js';
+// import { SlackMessageClient } from './SlackMessageClient.js';
 import { GithubIssueClient } from './GithubIssueClient.js';
-import { DevonianSolidSlackBridge } from './DevonianSolidSlackBridge.js';
+// import { DevonianSolidSlackBridge } from './DevonianSolidSlackBridge.js';
 import { DevonianSolidGithubBridge } from './DevonianSolidGithubBridge.js';
 
 // ...
@@ -27,11 +27,11 @@ index.storeEquivalences({
 });
 const solidClient = new SolidClient();
 const clients = {
- solidMessage: new SolidMessageClient(solidClient),
+//  solidMessage: new SolidMessageClient(solidClient),
  solidIssue: new SolidIssueClient(solidClient),
- slackMessage: new SlackMessageClient(),
+//  slackMessage: new SlackMessageClient(),
  githubIssue: new GithubIssueClient(),
 };
-new DevonianSolidSlackBridge(index, clients.solidMessage, clients.slackMessage);
+// new DevonianSolidSlackBridge(index, clients.solidMessage, clients.slackMessage);
 new DevonianSolidGithubBridge(index, clients.solidIssue, clients.githubIssue, randomBytes(8).toString('hex'));
 await Promise.all(Object.keys(clients).map(name => clients[name].connect()));
