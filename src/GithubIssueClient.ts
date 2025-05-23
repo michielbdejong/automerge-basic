@@ -1,13 +1,13 @@
 import { DevonianClient, DevonianModel } from 'devonian';
 
-const DEFAULT_HTTP_HEADERS = {
-  Accept: 'application/vnd.github+json',
-  'Content-Type': 'application/json',
-  'X-GitHub-Api-Version': '2022-11-28',
-};
+// const DEFAULT_HTTP_HEADERS = {
+//   Accept: 'application/vnd.github+json',
+//   'Content-Type': 'application/json',
+//   'X-GitHub-Api-Version': '2022-11-28',
+// };
 
-const BASE_API_URL = `https://api.github.com/repos`;
-const REL_API_PATH_ISSUES = `issues`;
+// const BASE_API_URL = `https://api.github.com/repos`;
+// const REL_API_PATH_ISSUES = `issues`;
 // const REL_API_PATH_COMMENTS = `comments`;
 
 export type GithubIssueWithoutId = DevonianModel & {
@@ -96,24 +96,26 @@ export class GithubIssueClient extends DevonianClient<GithubIssueWithoutId, Gith
   }
 
   async add(obj: GithubIssueWithoutId): Promise<GithubIssue> {
-    const headers = DEFAULT_HTTP_HEADERS;
-    headers['Authorization'] = `Bearer ${process.env.GITHUB_BEARER_TOKEN}`;
-    const fetchResult = await fetch(
-      `${BASE_API_URL}/${process.env.GITHUB_REPO}/${REL_API_PATH_ISSUES}`,
-      {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(
-          {
-            title: obj.title,
-            body: obj.body,
-          },
-          null,
-          2,
-        ),
-      },
-    );
-    console.log(await fetchResult.json());
+    console.log('Add to Github', obj);
+
+    // const headers = DEFAULT_HTTP_HEADERS;
+    // headers['Authorization'] = `Bearer ${process.env.GITHUB_BEARER_TOKEN}`;
+    // const fetchResult = await fetch(
+    //   `${BASE_API_URL}/${process.env.GITHUB_REPO}/${REL_API_PATH_ISSUES}`,
+    //   {
+    //     method: 'POST',
+    //     headers,
+    //     body: JSON.stringify(
+    //       {
+    //         title: obj.title,
+    //         body: obj.body,
+    //       },
+    //       null,
+    //       2,
+    //     ),
+    //   },
+    // );
+    // console.log(await fetchResult.json());
     // return fetchResult.json();
     return Object.assign(obj, { number: 42 });
   }

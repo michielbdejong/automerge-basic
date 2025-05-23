@@ -19,7 +19,7 @@ export class SolidIssueClient extends DevonianClient<SolidIssueWithoutId, SolidI
     super();
     this.solidClient = solidClient;
   }
-  async fetchTracker() {
+  async fetchTracker(): Promise<void> {
     this.localState = await fetchTracker(process.env.TRACKER_IN_SOLID, this.solidClient.fetch);
     console.log(this.localState);
     Object.keys(this.localState.issues).forEach((issueUri: string) => {

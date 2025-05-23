@@ -27,8 +27,8 @@ export class DevonianSolidGithubBridge {
     });
     this.githubIssueTable = new DevonianTable<GithubIssueWithoutId, GithubIssue>({
       client: GithubIssueClient,
-      idFieldName: 'uri',
-      platform: 'solid',
+      idFieldName: 'number',
+      platform: 'github',
       replicaId
     });
     new DevonianLens<SolidIssueWithoutId, GithubIssueWithoutId, SolidIssue, GithubIssue>(
