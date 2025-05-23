@@ -51,7 +51,7 @@ export class SolidMessageClient extends DevonianClient<SolidMessageWithoutId, So
           'add-from-client',
           Object.assign(entry, {
             chatUri: process.env.CHANNEL_IN_SOLID,
-            foreignIds: this.solidClient.getIdentifierMap(entry.uri),
+            foreignIds: this.solidClient.getIdentifierMap(entry.uri, 'message'),
           }),
         );
       });

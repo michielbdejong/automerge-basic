@@ -19,15 +19,28 @@ export class SolidIssueClient extends DevonianClient<SolidIssueWithoutId, SolidI
     super();
     this.solidClient = solidClient;
   }
-  async connect(): Promise<void> {
-    await this.solidClient.ensureConnected();
+  async fetchTracker() {
     this.localState = await fetchTracker(process.env.TRACKER_IN_SOLID, this.solidClient.fetch);
     console.log(this.localState);
+    Object.keys(this.localState.issues).forEach((issueUri: string) => {
+      this.emit('add-from-client', {
+        uri: issueUri,
+        title: this.localState.issues[issueUri].title,
+        description: this.localState.issues[issueUri].description,
+        foreignIds: this.solidClient.getIdentifierMap(issueUri, 'issue'),
+      } as SolidIssue);
+    });
+  }
+  async connect(): Promise<void> {
+    await this.solidClient.ensureConnected();
+    await this.fetchTracker();
     this.solidClient.subscribe(process.env.TRACKER_IN_SOLID, (notificationText: string) => {
       console.log('Tracker index changed', notificationText);
+      this.fetchTracker();
     });
     this.solidClient.subscribe(this.localState.tracker.stateUri, (notificationText: string) => {
       console.log('Tracker state doc changed', notificationText);
+      this.fetchTracker();
     });
   }
   async add(obj: SolidIssueWithoutId): Promise<SolidIssue> {

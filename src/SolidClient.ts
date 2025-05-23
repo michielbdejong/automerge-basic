@@ -79,14 +79,14 @@ export class SolidClient {
     });
     await Promise.all(promises);
   }
-  getIdentifierMap(uri: string): IdentifierMap {    
+  getIdentifierMap(uri: string, model: string): IdentifierMap {    
     const sameAs = this.store
       .each(sym(uri), owl('sameAs'), null, sym(uri).doc())
       .map((node) => node.value);
     const ret: IdentifierMap = {};
     sameAs.forEach((uri: string) => {
-      if (uri.startsWith(`https://tubsproject.org/id/message/`)) {
-        const rest = uri.substring(`https://tubsproject.org/id/message/`.length);
+      if (uri.startsWith(`https://tubsproject.org/id/${model}/`)) {
+        const rest = uri.substring(`https://tubsproject.org/id/${model}/`.length);
         const parts = rest.split('/');
         if (parts.length === 2) {
           ret[parts[0]] = parts[1];
