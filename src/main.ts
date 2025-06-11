@@ -1,5 +1,4 @@
 import { createServer, IncomingMessage, ServerResponse, IncomingHttpHeaders } from 'http';
-import { Ledger } from './ledger.js';
 
 function  analyseTraffic(data: {
   upstreamUrl: string,
@@ -114,24 +113,7 @@ function startProxy(port: number, upstreamUrl: string, handler: typeof toBackend
 }
   
 async function run(): Promise<void> {
-  const ledger = new Ledger({
-    format: "0",
-    "rate":1,
-    "absolutePath": ["trunk","branch"],
-    "validated_window":300,
-  }, 'branch');
-  ledger.addAccount('admin');
-  ledger.addAccount('alice');
-  ledger.addAccount('bob');
-  ledger.setTrunkward('trunk');
-  ledger.addLeafward('twig');
-
-  startProxy(8060, 'http://twig.cc-server', toBackend);
-  // startProxy(8070, 'http://branch.cc-server', ledger.handle.bind(ledger));
-  startProxy(8070, 'http://branch.cc-server', toBackend);
-  startProxy(8080, 'http://trunk.cc-server', toBackend);
-  startProxy(8090, 'http://branch2.cc-server', toBackend, 'http://komunitin-accounting-1:2025/NET2/cc');
-  // startProxy(8090, 'http://branch2.cc-server', toBackend);
+  startProxy(80, 'http://komunitin.michielbdejong.com', toBackend, 'http://komunitin-accounting-1:2025/NET2/cc');
 }
 
 // ...
